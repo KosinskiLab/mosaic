@@ -248,7 +248,7 @@ class ExportDialog(QDialog):
 
         suffix_row = QHBoxLayout()
         suffix_row.setSpacing(6)
-        self.suffix_label = QLabel("Suffix:")
+        self.suffix_label = QLabel("Suffix")
         self.suffix_label.setFixedWidth(LABEL_WIDTH)
         suffix_row.addWidget(self.suffix_label)
 

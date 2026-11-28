@@ -74,7 +74,7 @@ from .widgets import (
     UpdatePill,
     ViewerModes,
 )
-from .widgets.dock import toggle_dock
+from .widgets.dock import style_popup, toggle_dock
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 from .widgets.volume_viewer_hud import VolumeViewerHUD
 
@@ -762,19 +762,10 @@ class App(QMainWindow):
 
         menu_bar = self.menuBar()
 
-        def _style_popup(m: QMenu):
-            m.setWindowFlags(
-                m.windowFlags()
-                | Qt.WindowType.FramelessWindowHint
-                | Qt.WindowType.NoDropShadowWindowHint
-            )
-            m.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-            return m
-
-        file_menu = _style_popup(menu_bar.addMenu("File"))
-        view_menu = _style_popup(menu_bar.addMenu("View"))
-        interact_menu = _style_popup(menu_bar.addMenu("Actions"))
-        preference_menu = _style_popup(menu_bar.addMenu("Preferences"))
+        file_menu = style_popup(menu_bar.addMenu("File"))
+        view_menu = style_popup(menu_bar.addMenu("View"))
+        interact_menu = style_popup(menu_bar.addMenu("Actions"))
+        preference_menu = style_popup(menu_bar.addMenu("Preferences"))
 
         new_session_action = QAction(icon("ph.folder-notch-open"), "Load Session", self)
         new_session_action.triggered.connect(self.load_session)
@@ -806,7 +797,7 @@ class App(QMainWindow):
         close_file_action.triggered.connect(lambda: self.close_session(True))
 
         self.recent_file_actions = []
-        self.recent_menu = _style_popup(QMenu("Recent Files", self))
+        self.recent_menu = style_popup(QMenu("Recent Files", self))
         self.recent_menu.setIcon(icon("ph.clock-counter-clockwise"))
         self.recent_menu.setToolTipsVisible(True)
         for i in range(Settings.ui.max_recent_files):
@@ -846,7 +837,7 @@ class App(QMainWindow):
         )
         clipboard_window_action.setShortcut("Ctrl+Shift+W")
 
-        axes_menu = _style_popup(QMenu("Axes", self))
+        axes_menu = style_popup(QMenu("Axes", self))
         axes_menu.setIcon(icon("ph.crosshair"))
         visible_action = QAction("Visible", self)
         visible_action.setCheckable(True)
@@ -902,7 +893,7 @@ class App(QMainWindow):
 
         show_camera_hud.triggered.connect(_toggle_camera_hud)
 
-        coloring_menu = _style_popup(QMenu("Coloring", self))
+        coloring_menu = style_popup(QMenu("Coloring", self))
         coloring_menu.setIcon(icon("ph.palette"))
         coloring_group = QActionGroup(self)
         coloring_group.setExclusive(True)
@@ -1060,7 +1051,7 @@ class App(QMainWindow):
         view_menu.addAction(self.trajectory_action)
         view_menu.addSeparator()
 
-        bbox_menu = _style_popup(QMenu("Bounding Boxes", self))
+        bbox_menu = style_popup(QMenu("Bounding Boxes", self))
         bbox_menu.setIcon(icon("ph.bounding-box"))
 
         self.computed_bbox = QAction("Dataset Bounds", self)
@@ -1192,7 +1183,7 @@ class App(QMainWindow):
             lambda: self._transition_modes(ViewerModes.MESH_ADD)
         )
 
-        interaction_target_menu = _style_popup(QMenu("Interaction Target", self))
+        interaction_target_menu = style_popup(QMenu("Interaction Target", self))
         target_group = QActionGroup(self)
         target_group.setExclusive(True)
         self.cluster_target_action = QAction("Clusters", self)

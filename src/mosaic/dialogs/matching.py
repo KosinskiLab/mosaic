@@ -46,23 +46,23 @@ class InputDataTab(QWidget):
         self.output_selector = PathSelector(
             placeholder="Path to working directory", mode="directory"
         )
-        self.output_layout.addRow("Output Directory:", self.output_selector)
+        self.output_layout.addRow("Output Directory", self.output_selector)
         self.scroll_layout.addWidget(self.output_group)
 
         self.target_group = QGroupBox("Target")
         self.target_layout = QFormLayout(self.target_group)
         self.tomogram_selector = PathSelector(placeholder="Path to target")
-        self.target_layout.addRow("Tomogram:", self.tomogram_selector)
+        self.target_layout.addRow("Tomogram", self.tomogram_selector)
 
         self.target_mask_selector = PathSelector(placeholder="Path to target mask")
-        self.target_layout.addRow("Target Mask (Optional):", self.target_mask_selector)
+        self.target_layout.addRow("Target Mask (Optional)", self.target_mask_selector)
 
         self.scroll_layout.addWidget(self.target_group)
 
         self.template_group = QGroupBox("Template")
         self.template_layout = QFormLayout(self.template_group)
         self.template_selector = PathSelector(placeholder="Path to template")
-        self.template_layout.addRow("Template:", self.template_selector)
+        self.template_layout.addRow("Template", self.template_selector)
         self.template_mask_selector = PathSelector(placeholder="Path to template mask")
         self.template_layout.addRow(
             "Template Mask (Optional):", self.template_mask_selector
@@ -114,17 +114,17 @@ class PreprocessTab(QWidget):
         self.preproc_filters_group = QGroupBox("Filters")
         self.preproc_filters_layout = QGridLayout(self.preproc_filters_group)
 
-        preproc_lowpass_label = QLabel("Lowpass (Å):")
+        preproc_lowpass_label = QLabel("Lowpass (Å)")
         self.preproc_lowpass_input = QLineEdit()
         self.preproc_lowpass_input.setPlaceholderText("e.g., 20")
         self.preproc_lowpass_input.setToolTip("Low-pass filter cutoff in Angstroms")
 
-        preproc_highpass_label = QLabel("Highpass (Å):")
+        preproc_highpass_label = QLabel("Highpass (Å)")
         self.preproc_highpass_input = QLineEdit()
         self.preproc_highpass_input.setPlaceholderText("e.g., 200")
         self.preproc_highpass_input.setToolTip("High-pass filter cutoff in Angstroms")
 
-        invert_template_label = QLabel("Contrast:")
+        invert_template_label = QLabel("Contrast")
         self.invert_template_check = QCheckBox("Invert template contrast")
         contrast_help = QLabel("Invert template contrast to match target contrast.")
         contrast_help.setStyleSheet(
@@ -145,13 +145,13 @@ class PreprocessTab(QWidget):
         self.alignment_group = QGroupBox("Alignment")
         self.alignment_layout = QGridLayout(self.alignment_group)
 
-        align_axis_label = QLabel("Align Template Axis:")
+        align_axis_label = QLabel("Align Template Axis")
         self.align_axis_combo = QComboBox()
         self.align_axis_combo.addItems(["None", "X", "Y", "Z"])
         self.align_axis_combo.setCurrentIndex(0)
         self.align_axis_combo.setToolTip("Align template along a specific axis")
 
-        align_eigen_label = QLabel("Align Eigenvector:")
+        align_eigen_label = QLabel("Align Eigenvector")
         self.align_eigen_combo = QComboBox()
         self.align_eigen_combo.addItems(["0", "1", "2"])
         self.align_eigen_combo.setToolTip("Eigenvector to use for alignment")
@@ -162,7 +162,7 @@ class PreprocessTab(QWidget):
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
         )
 
-        flip_axis_label = QLabel("Flip Template:")
+        flip_axis_label = QLabel("Flip Template")
         self.flip_axis_check = QCheckBox("Flip template along alignment axis")
         self.flip_axis_check.setToolTip(
             "Invert template orientation along the alignment axis"
@@ -219,12 +219,12 @@ class MatchingTab(QWidget):
         self.angular_group = QGroupBox("Sampling")
         self.angular_layout = QGridLayout(self.angular_group)
 
-        step_label = QLabel("Angular Step (degrees):")
+        step_label = QLabel("Angular Step (degrees)")
         self.step_input = QSpinBox()
         self.step_input.setValue(5)
         self.step_input.setRange(1, 360)
 
-        score_label = QLabel("Score Function:")
+        score_label = QLabel("Score Function")
         self.score_combo = QComboBox()
         self.score_combo.addItems(["FLCSphericalMask", "FLC"])
 
@@ -238,12 +238,12 @@ class MatchingTab(QWidget):
         self.orientation_group = QGroupBox("Constraints")
         self.orientation_layout = QGridLayout(self.orientation_group)
 
-        orientations_label = QLabel("Orientations File (Optional):")
+        orientations_label = QLabel("Orientations File (Optional)")
         self.orientations_selector = PathSelector(
             placeholder="Path to orientations file"
         )
 
-        scaling_label = QLabel("Scaling:")
+        scaling_label = QLabel("Scaling")
         self.orientation_scaling = QDoubleSpinBox()
         self.orientation_scaling.setValue(1.0)
         self.orientation_scaling.setRange(1e-6, 1e12)
@@ -255,7 +255,7 @@ class MatchingTab(QWidget):
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
         )
 
-        rotational_uncertainty_label = QLabel("Rotational Uncertainty:")
+        rotational_uncertainty_label = QLabel("Rotational Uncertainty")
         self.rotational_uncertainty = QLineEdit()
         self.rotational_uncertainty.setText("40")
         rotational_uncertainty_help = QLabel(
@@ -265,7 +265,7 @@ class MatchingTab(QWidget):
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
         )
 
-        translational_uncertainty_label = QLabel("Translational Uncertainty:")
+        translational_uncertainty_label = QLabel("Translational Uncertainty")
         self.translational_uncertainty = QLineEdit()
         self.translational_uncertainty.setText("10,10,15")
         translational_uncertainty_help = QLabel(
@@ -293,20 +293,20 @@ class MatchingTab(QWidget):
         self.filters_group = QGroupBox("Filters")
         self.filters_layout = QGridLayout(self.filters_group)
 
-        ctf_label = QLabel("CTF File:")
+        ctf_label = QLabel("CTF File")
         self.ctf_file = PathSelector(
             placeholder="Can be a path to mdoc, warp xml or tomostar file."
         )
 
-        lowpass_label = QLabel("Lowpass (Å):")
+        lowpass_label = QLabel("Lowpass (Å)")
         self.lowpass_input = QLineEdit()
         self.lowpass_input.setPlaceholderText("e.g., 20")
 
-        highpass_label = QLabel("Highpass (Å):")
+        highpass_label = QLabel("Highpass (Å)")
         self.highpass_input = QLineEdit()
         self.highpass_input.setPlaceholderText("e.g., 200")
 
-        tilt_label = QLabel("Tilt Range:")
+        tilt_label = QLabel("Tilt Range")
         self.tilt_input = QLineEdit()
         self.tilt_input.setPlaceholderText("e.g., 57,60")
         tilt_help = QLabel("Format: start_angle,stop_angle")
@@ -314,7 +314,7 @@ class MatchingTab(QWidget):
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
         )
 
-        axes_label = QLabel("Wedge Axes:")
+        axes_label = QLabel("Wedge Axes")
         self.axes_input = QLineEdit()
         self.axes_input.setPlaceholderText("e.g., 2,0")
         axes_help = QLabel("Format: opening_axis,tilt_axis")
@@ -322,11 +322,11 @@ class MatchingTab(QWidget):
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
         )
 
-        defocus_label = QLabel("Defocus (Å):")
+        defocus_label = QLabel("Defocus (Å)")
         self.defocus_input = QLineEdit()
         self.defocus_input.setPlaceholderText("e.g., 30000")
 
-        whitening_label = QLabel("Spectral Whitening:")
+        whitening_label = QLabel("Spectral Whitening")
         self.whitening_check = QCheckBox("Apply")
 
         self.filters_layout.addWidget(ctf_label, 0, 0)
@@ -394,7 +394,7 @@ class PeakCallingTab(QWidget):
         self.peak_group = QGroupBox("Peak Properties")
         self.peak_layout = QGridLayout(self.peak_group)
 
-        caller_label = QLabel("Peak Caller:")
+        caller_label = QLabel("Peak Caller")
         self.caller_combo = QComboBox()
         self.caller_combo.addItems(
             [
@@ -404,12 +404,12 @@ class PeakCallingTab(QWidget):
             ]
         )
 
-        peaks_label = QLabel("Number of Peaks:")
+        peaks_label = QLabel("Number of Peaks")
         self.peaks_input = QSpinBox()
         self.peaks_input.setRange(1, 100000)
         self.peaks_input.setValue(1000)
 
-        distance_label = QLabel("Minimum Distance (voxels):")
+        distance_label = QLabel("Minimum Distance (voxels)")
         self.distance_input = QSpinBox()
         self.distance_input.setRange(1, 1000)
         self.distance_input.setValue(10)
@@ -453,16 +453,16 @@ class ComputeTab(QWidget):
         self.compute_group = QGroupBox("Computation Settings")
         self.compute_layout = QGridLayout(self.compute_group)
 
-        cores_label = QLabel("CPU Cores:")
+        cores_label = QLabel("CPU Cores")
         self.cores_input = QSpinBox()
         self.cores_input.setValue(4)
         self.cores_input.setRange(1, 128)
 
-        memory_label = QLabel("Memory Usage:")
+        memory_label = QLabel("Memory Usage")
         self.memory_input = QLineEdit()
         self.memory_input.setPlaceholderText("e.g., 85 to use 85% of available memory.")
 
-        backend_label = QLabel("Backend:")
+        backend_label = QLabel("Backend")
         self.backend_combo = QComboBox()
         self.backend_combo.addItems(["numpyfftw", "cupy"])
         self.backend_combo.setCurrentText("numpyfftw")

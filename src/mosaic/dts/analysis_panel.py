@@ -115,7 +115,7 @@ class AnalysisPanel(QWidget):
 
         self._metric_combo = QComboBox()
         self._metric_combo.currentTextChanged.connect(self._update_plot)
-        form.addRow("Metric:", self._metric_combo)
+        form.addRow("Metric", self._metric_combo)
 
         derived_row = QHBoxLayout()
         derived_row.setSpacing(4)
@@ -145,21 +145,21 @@ class AnalysisPanel(QWidget):
         self._derived_save_btn.setMaximumWidth(30)
         self._derived_save_btn.setMinimumHeight(Colors.WIDGET_HEIGHT)
         derived_row.addWidget(self._derived_save_btn, stretch=0)
-        form.addRow("Derived:", derived_row)
+        form.addRow("Derived", derived_row)
 
         self._norm_combo = QComboBox()
         self._norm_combo.addItems(["None", "Per-run", "Relative"])
         self._norm_combo.currentTextChanged.connect(self._update_plot)
-        form.addRow("Normalize:", self._norm_combo)
+        form.addRow("Normalize", self._norm_combo)
 
         self._color_combo = QComboBox()
         self._color_combo.addItem("(auto)")
         self._color_combo.currentTextChanged.connect(self._update_plot)
-        form.addRow("Color by:", self._color_combo)
+        form.addRow("Color by", self._color_combo)
 
         self._cmap_selector = ColorMapSelector(default="Dark2")
         self._cmap_selector.colormapChanged.connect(self._update_plot)
-        form.addRow("Palette:", self._cmap_selector)
+        form.addRow("Palette", self._cmap_selector)
 
         self._smooth_combo = QComboBox()
         for w in (1, 5, 10, 25, 50, 100, 200, 500):
@@ -167,7 +167,7 @@ class AnalysisPanel(QWidget):
             self._smooth_combo.addItem(label, w)
         self._smooth_combo.setToolTip("Moving average window size")
         self._smooth_combo.currentIndexChanged.connect(self._update_plot)
-        form.addRow("Smooth:", self._smooth_combo)
+        form.addRow("Smooth", self._smooth_combo)
 
         columns.addWidget(display, stretch=2, alignment=Qt.AlignmentFlag.AlignTop)
 

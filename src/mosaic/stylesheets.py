@@ -67,10 +67,6 @@ class Colors:
         "BG_TERTIARY": "#f4f4f5",  # Surface tint (Zinc 100)
         "BG_HOVER": "rgba(0, 0, 0, 0.06)",
         "BG_PRESSED": "rgba(0, 0, 0, 0.10)",
-        "SUCCESS": "#10b981",
-        "WARNING": "#f59e0b",
-        "WARNING_TEXT": "#b45309",
-        "ERROR": "#ef4444",
     }
 
     DARK = {
@@ -85,10 +81,6 @@ class Colors:
         "BG_TERTIARY": "#27272a",  # Surface tint (Zinc 800)
         "BG_HOVER": "rgba(255, 255, 255, 0.06)",
         "BG_PRESSED": "rgba(255, 255, 255, 0.10)",
-        "SUCCESS": "#34d399",
-        "WARNING": "#fbbf24",
-        "WARNING_TEXT": "#fbbf24",
-        "ERROR": "#f87171",
     }
 
     @classmethod
@@ -120,6 +112,10 @@ class Colors:
     def is_dark(cls):
         """Return True if the current palette is dark."""
         return cls.PRIMARY == cls.DARK["PRIMARY"]
+
+    SUCCESS = "#178c65"  # Emerald
+    WARNING = "#a9701b"  # Amber
+    ERROR = "#de4151"  # Ruby
 
     RADIUS = 6  # Standard border radius for controls (px)
     WIDGET_HEIGHT = 30  # Standard height for input widgets (px)
@@ -156,18 +152,18 @@ class Colors:
 
     CATEGORY = {
         # Pipeline operation categories
-        "input": "#6366f1",  # Indigo
-        "preprocessing": "#3b82f6",  # Blue
-        "parametrization": "#10b981",  # Emerald
-        "analysis": "#06b6d4",  # Cyan
-        "export": "#f97316",  # Orange
+        "input": "#766ae7",  # Iris
+        "preprocessing": "#287cdc",  # Sapphire
+        "parametrization": "#178c65",  # Emerald
+        "analysis": "#19869c",  # Peacock
+        "export": "#a9701b",  # Amber
         # Animation types
-        "trajectory": "#3b82f6",  # Blue
-        "camera": "#10b981",  # Emerald
-        "zoom": "#14b8a6",  # Teal
-        "volume": "#eab308",  # Yellow
-        "visibility": "#8b5cf6",  # Violet
-        "waypoint": "#ec4899",  # Pink
+        "trajectory": "#287cdc",  # Sapphire
+        "camera": "#178c65",  # Emerald
+        "zoom": "#19869c",  # Peacock
+        "volume": "#a9701b",  # Amber
+        "visibility": "#766ae7",  # Iris
+        "waypoint": "#d4496e",  # Garnet
     }
 
 
@@ -198,7 +194,7 @@ def _build_QGroupBox_style():
     QGroupBox::title {{
         subcontrol-origin: padding;
         left: 0px;
-        color: {Colors.TEXT_MUTED};
+        color: {Colors.TEXT_SECONDARY};
     }}
 """
 

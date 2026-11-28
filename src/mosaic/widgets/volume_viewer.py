@@ -408,7 +408,7 @@ class VolumeViewer(QWidget):
         self.color_selector.setFixedHeight(Colors.WIDGET_HEIGHT)
         self.color_selector.colormapChanged.connect(self.change_color_palette)
 
-        self.contrast_label = QLabel("Contrast:")
+        self.contrast_label = QLabel("Contrast")
         self.contrast_slider = DualHandleSlider()
         self.contrast_slider.setRange(0, 100)
         self.contrast_slider.setValues(0, 100)

@@ -116,19 +116,19 @@ class ConfigurePanel(QScrollArea):
             file_filter="TSI Files (*.tsi) Q Files (*.q);;All Files (*.*)",
         )
         self._mesh_path.path_input.textChanged.connect(self._on_mesh_changed)
-        form.addRow("Mesh:", self._mesh_path)
+        form.addRow("Mesh", self._mesh_path)
 
         self._output_dir = PathSelector(
             placeholder="Output directory", mode="directory"
         )
-        form.addRow("Output:", self._output_dir)
+        form.addRow("Output", self._output_dir)
 
         self._dts_file = PathSelector(
             placeholder="(Optional) populate from dts config",
             file_filter="DTS Files (*.dts);;All Files (*.*)",
         )
         self._dts_file.path_input.textChanged.connect(self._load_dts_file)
-        form.addRow("DTS:", self._dts_file)
+        form.addRow("DTS", self._dts_file)
 
         return group
 
@@ -146,7 +146,7 @@ class ConfigurePanel(QScrollArea):
         self._param_widgets["edge_range"].setToolTip(
             "Min and max edge lengths for mesh refinement (format: min - max)"
         )
-        form.addRow("Edge length:", self._param_widgets["edge_range"])
+        form.addRow("Edge length", self._param_widgets["edge_range"])
 
         for key, label, cfg in (
             (
@@ -213,7 +213,7 @@ class ConfigurePanel(QScrollArea):
         self._volume_screen_cb.stateChanged.connect(self._toggle_volume_screening)
         vol_layout.addWidget(self._volume_screen_cb)
 
-        self._hmff_form.addRow("Volume:", vol_row)
+        self._hmff_form.addRow("Volume", vol_row)
 
         self._add_screenable_row(
             self._hmff_form, key="xi", label="Coupling (\u03be)", default=5.0
@@ -248,7 +248,7 @@ class ConfigurePanel(QScrollArea):
         self._param_widgets["scale_factor"].setToolTip(
             "Converts mesh coordinates to DTS units (nm)."
         )
-        self._hmff_form.addRow("Scale factor:", self._param_widgets["scale_factor"])
+        self._hmff_form.addRow("Scale factor", self._param_widgets["scale_factor"])
         self._hmff_dep_widgets.append(self._param_widgets["scale_factor"])
 
         self._param_widgets["offset"] = QLineEdit("0,0,0")
@@ -257,7 +257,7 @@ class ConfigurePanel(QScrollArea):
             "Translation to center the scaled mesh\n"
             "in the simulation box in DTS units (nm)."
         )
-        self._hmff_form.addRow("Offset:", self._param_widgets["offset"])
+        self._hmff_form.addRow("Offset", self._param_widgets["offset"])
         self._hmff_dep_widgets.append(self._param_widgets["offset"])
 
         self._param_widgets["use_filters"] = create_setting_widget(
@@ -266,7 +266,7 @@ class ConfigurePanel(QScrollArea):
         self._param_widgets["use_filters"].stateChanged.connect(
             self._toggle_filter_inputs
         )
-        self._hmff_form.addRow("Enable Filters:", self._param_widgets["use_filters"])
+        self._hmff_form.addRow("Enable Filters", self._param_widgets["use_filters"])
         self._hmff_dep_widgets.append(self._param_widgets["use_filters"])
 
         for param_key, label, cfg in (
@@ -409,7 +409,7 @@ class ConfigurePanel(QScrollArea):
             lambda state, k=key: self._toggle_screen_param(k, state)
         )
 
-        form.addRow(f"{label}:", row)
+        form.addRow(label, row)
 
     def _add_coupling_section(
         self, parent_form: QFormLayout, coupling_key: str, coupling_def: dict
@@ -428,7 +428,7 @@ class ConfigurePanel(QScrollArea):
         mode_combo.setEnabled(False)
         header_layout.addWidget(mode_combo)
 
-        parent_form.addRow(f"{coupling_def['label']}:", header)
+        parent_form.addRow(coupling_def["label"], header)
 
         mode_stack = _AutoSizedStack()
         mode_param_keys = {}

@@ -200,7 +200,7 @@ def _build_type_combo_option(
     combo = QComboBox()
     combo.addItems(items)
     combo.setFixedHeight(Colors.WIDGET_HEIGHT)
-    layout.addRow("Type:", combo)
+    layout.addRow("Type", combo)
     dlg.property_options_layout.addWidget(group)
     dlg.option_widgets[key] = combo
 
@@ -219,7 +219,7 @@ def _build_vertex_properties_options(dlg: "PropertyAnalysisDialog"):
     options = QComboBox()
     options.addItems(_collect_vertex_properties(dlg))
     options.setFixedHeight(Colors.WIDGET_HEIGHT)
-    layout.addRow("Type:", options)
+    layout.addRow("Type", options)
     dlg.property_options_layout.addWidget(group)
     dlg.option_widgets["name"] = options
 
@@ -267,7 +267,7 @@ def _build_projected_curvature_options(dlg: "PropertyAnalysisDialog"):
     options_layout = QFormLayout()
     curvature, radius = dlg._create_curvature_options(options_layout)
     projection = _create_projection_combo()
-    options_layout.addRow("Projection:", projection)
+    options_layout.addRow("Projection", projection)
     layout.addLayout(options_layout)
 
     dlg.property_options_layout.addWidget(group, 1)
@@ -283,7 +283,7 @@ def _build_angle_options(dlg: "PropertyAnalysisDialog"):
     )
     options_layout = QFormLayout()
     projection = _create_projection_combo()
-    options_layout.addRow("Projection:", projection)
+    options_layout.addRow("Projection", projection)
     layout.addLayout(options_layout)
 
     dlg.property_options_layout.addWidget(group, 1)
@@ -298,7 +298,7 @@ def _build_geodesic_distance_options(dlg: "PropertyAnalysisDialog"):
     k_start, k_end, aggregation = dlg._create_knn_range_widget(layout)
     options_layout = QFormLayout()
     projection = _create_projection_combo()
-    options_layout.addRow("Projection:", projection)
+    options_layout.addRow("Projection", projection)
     layout.addLayout(options_layout)
 
     dlg.property_options_layout.addWidget(group, 1)
@@ -314,7 +314,7 @@ def _build_thickness_options(dlg: "PropertyAnalysisDialog"):
         "Options", "data", with_compare_all=False
     )
     smoothing_layout = QHBoxLayout()
-    smoothing_layout.addWidget(QLabel("Smoothing Radius:"))
+    smoothing_layout.addWidget(QLabel("Smoothing Radius"))
     smoothing_spin = QDoubleSpinBox()
     smoothing_spin.setRange(0.0, 1000.0)
     smoothing_spin.setValue(0.0)
@@ -340,7 +340,7 @@ def _build_tomogram_options(dlg: "PropertyAnalysisDialog"):
     path_selector = PathSelector(
         placeholder="Path to tomogram (MRC, EM, MAP, ...)",
     )
-    layout.addRow("Tomogram:", path_selector)
+    layout.addRow("Tomogram", path_selector)
     dlg.option_widgets["file_path"] = path_selector
 
     texture_size = QSpinBox()
@@ -352,7 +352,7 @@ def _build_tomogram_options(dlg: "PropertyAnalysisDialog"):
         "Texture resolution in pixels. Larger meshes require larger textures to "
         "maintain texture resolution."
     )
-    layout.addRow("Texture Size:", texture_size)
+    layout.addRow("Texture Size", texture_size)
     dlg.option_widgets["texture_size"] = texture_size
 
     spline_order = QSpinBox()
@@ -363,7 +363,7 @@ def _build_tomogram_options(dlg: "PropertyAnalysisDialog"):
         "Spline interpolation order for tomogram sampling. "
         "1 = linear (fast), 3 = cubic (smooth, default), 5 = quintic."
     )
-    layout.addRow("Spline Order:", spline_order)
+    layout.addRow("Spline Order", spline_order)
     dlg.option_widgets["interpolation_order"] = spline_order
 
     offset_slider = SliderRow(
@@ -488,7 +488,7 @@ class ColorScaleSettingsDialog(QDialog):
         self.lower_spinbox.setValue(0.0)
         self.lower_spinbox.setEnabled(False)
         self.lower_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
-        lower_value_layout.addRow("Minimum Value:", self.lower_spinbox)
+        lower_value_layout.addRow("Minimum Value", self.lower_spinbox)
         threshold_layout.addLayout(lower_value_layout)
 
         self.upper_checkbox = QCheckBox("Enable Upper Threshold")
@@ -503,7 +503,7 @@ class ColorScaleSettingsDialog(QDialog):
         self.upper_spinbox.setValue(1.0)
         self.upper_spinbox.setEnabled(False)
         self.upper_spinbox.setFixedHeight(Colors.WIDGET_HEIGHT)
-        upper_value_layout.addRow("Maximum Value:", self.upper_spinbox)
+        upper_value_layout.addRow("Maximum Value", self.upper_spinbox)
         threshold_layout.addLayout(upper_value_layout)
 
         layout.addWidget(threshold_group)
@@ -745,7 +745,7 @@ class PropertyAnalysisDialog(QDialog):
             (k_start_spinbox, k_end_spinbox, aggregation_combobox)
         """
         neighbor_layout = QHBoxLayout()
-        neighbor_layout.addWidget(QLabel("Neighbors:"))
+        neighbor_layout.addWidget(QLabel("Neighbors"))
 
         knn_layout = QHBoxLayout()
         k_start = QSpinBox()
@@ -767,7 +767,7 @@ class PropertyAnalysisDialog(QDialog):
         layout.addLayout(neighbor_layout)
 
         aggregation_layout = QHBoxLayout()
-        aggregation_layout.addWidget(QLabel("Aggregation:"))
+        aggregation_layout.addWidget(QLabel("Aggregation"))
         aggregation_combo = QComboBox()
         aggregation_combo.addItems(["Mean", "Min", "Max", "Median"])
         aggregation_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
@@ -787,13 +787,13 @@ class PropertyAnalysisDialog(QDialog):
         curvature_combo = QComboBox()
         curvature_combo.addItems(["Mean", "Gaussian"])
         curvature_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
-        layout.addRow("Method:", curvature_combo)
+        layout.addRow("Method", curvature_combo)
 
         radius_spin = QSpinBox()
         radius_spin.setRange(1, 20)
         radius_spin.setValue(5)
         radius_spin.setFixedHeight(Colors.WIDGET_HEIGHT)
-        layout.addRow("Radius:", radius_spin)
+        layout.addRow("Radius", radius_spin)
 
         return curvature_combo, radius_spin
 
@@ -916,7 +916,7 @@ class PropertyAnalysisDialog(QDialog):
 
         metric_row = QHBoxLayout()
         metric_row.setSpacing(8)
-        metric_label = QLabel("Metric:")
+        metric_label = QLabel("Metric")
         metric_row.addWidget(metric_label)
         self.property_combo = QComboBox()
         self.property_combo.setFixedHeight(Colors.WIDGET_HEIGHT)
@@ -1013,7 +1013,7 @@ class PropertyAnalysisDialog(QDialog):
         options_layout.setSpacing(8)
 
         colormap_layout = QHBoxLayout()
-        colormap_layout.addWidget(QLabel("Color Map:"))
+        colormap_layout.addWidget(QLabel("Color Map"))
 
         self.colormap_combo, self.colormap_settings_btn = self._create_colormap_combo(
             with_settings_button=True
@@ -1162,7 +1162,7 @@ class PropertyAnalysisDialog(QDialog):
         options_layout.addLayout(strat_layout)
 
         alpha_layout = QHBoxLayout()
-        alpha_layout.addWidget(QLabel("Alpha:"))
+        alpha_layout.addWidget(QLabel("Alpha"))
         self.alpha_slider = QSpinBox()
         self.alpha_slider.setRange(0, 255)
         self.alpha_slider.setValue(128)
@@ -1172,7 +1172,7 @@ class PropertyAnalysisDialog(QDialog):
         options_layout.addLayout(alpha_layout)
 
         colormap_layout = QHBoxLayout()
-        colormap_layout.addWidget(QLabel("Color Palette:"))
+        colormap_layout.addWidget(QLabel("Color Palette"))
 
         self.vis_colormap_combo = self._create_colormap_combo(
             with_settings_button=False

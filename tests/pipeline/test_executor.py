@@ -10,9 +10,15 @@ import os
 import shlex
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
-from mosaic.pipeline.executor import compile_run, execute_run, generate_runs
+from mosaic.pipeline.executor import (
+    compile_run,
+    execute_run,
+    generate_runs,
+    run_complete,
+)
 
 
 def _run(operations, run_id="test", input_file="/data/input.star", input_params=None):
@@ -325,3 +331,64 @@ class TestExecuteRun:
         execute_run(r, skip_complete=True)
         # The file should still be the fake content (not overwritten)
         assert out_file.read_bytes() == b"fake"
+
+
+def _library_ops():
+    from mosaic.pipeline.operations import OPERATION_CATEGORIES
+
+    return [
+        info["id"]
+        for category in OPERATION_CATEGORIES.values()
+        for info in category["operations"].values()
+    ]
+
+
+@pytest.mark.parametrize("op_id", _library_ops())
+def test_library_operations_compile_to_commands(op_id):
+    from mosaic.commands.registry import CommandRegistry
+
+    for _, line in compile_run(_run([_import_op(), _op(op_id)]))[1:]:
+        assert CommandRegistry.get(shlex.split(line)[0]) is not None
+
+
+def test_outlier_removal_drops_stray_points(tmp_path):
+    from mosaic.formats.parser import read_txt
+
+    rng = np.random.default_rng(0)
+    cloud = np.vstack([rng.normal(50, 2, size=(500, 3)), [[500, 500, 500]]])
+    source = tmp_path / "cloud.csv"
+    np.savetxt(source, cloud, delimiter=",", header="x,y,z", comments="")
+    r = _run(
+        [
+            _import_op(str(source)),
+            _op("remove_outliers", {"method": "statistical"}),
+            _op("export_data", {"output_dir": str(tmp_path), "format": "xyz"}),
+        ],
+        input_file=str(source),
+    )
+
+    execute_run(r)
+
+    exported = read_txt(str(tmp_path / "test.xyz"))
+    points = np.concatenate([data.vertices for data in exported])
+    assert len(points) < len(cloud)
+    assert not np.any(np.all(np.isclose(points, 500), axis=1))
+
+
+def test_run_complete_needs_every_output(tmp_path):
+    r = _run(
+        [
+            _import_op(),
+            _op("save_session", {"output_dir": str(tmp_path)}),
+            _op("export_data", {"output_dir": str(tmp_path), "format": "star"}),
+        ]
+    )
+    assert not run_complete(r)
+    (tmp_path / "test.mosaic").touch()
+    assert not run_complete(r)
+    (tmp_path / "test.star").touch()
+    assert run_complete(r)
+
+
+def test_run_without_outputs_is_never_complete():
+    assert not run_complete(_run([_import_op()]))

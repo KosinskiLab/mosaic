@@ -62,7 +62,7 @@ def _add_to_grid(
     wide: bool = False,
 ):
     """Add a label: widget pair to the grid at the given logical column."""
-    label = QLabel(f"{label_text}:")
+    label = QLabel(label_text)
     widget.setFixedHeight(Colors.WIDGET_HEIGHT)
 
     width, gcol = 1, 2 * col
@@ -74,11 +74,11 @@ def _add_to_grid(
 
 
 def _pack_settings_into_grid(
-    grid: QGridLayout, settings_list: Sequence, start_row: int = 0
+    grid: QGridLayout, settings_list: Sequence, start_row: int = 0, start_col: int = 0
 ):
     """Pack settings into the grid. Returns {param_name: widget}."""
     widgets = {}
-    row, col = start_row, 0
+    row, col = start_row, start_col
 
     for setting in settings_list:
         wide = setting.get("type") == "PathSelector"
@@ -180,9 +180,7 @@ class OperationCardWidget(QFrame):
         title = QLabel(self.operation_name)
         title_font = QFont()
         title_font.setPixelSize(Typography.BODY)
-        title_font.setBold(True)
         title.setFont(title_font)
-        title.setStyleSheet(f"color: {self.category_color};")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
@@ -196,7 +194,7 @@ class OperationCardWidget(QFrame):
         header_layout.addWidget(self.expand_btn)
 
         close_btn = QPushButton()
-        close_btn.setIcon(icon("ph.x", role="muted"))
+        close_btn.setIcon(icon("ph.trash", role="muted"))
         close_btn.setFixedSize(28, 28)
         close_btn.setStyleSheet(
             f"QPushButton {{ border: none}} QPushButton:hover {{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
@@ -208,14 +206,14 @@ class OperationCardWidget(QFrame):
 
         self.desc = QLabel(self.operation_info["description"])
         self.desc.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
         )
         self.desc.setWordWrap(True)
         layout.addWidget(self.desc)
 
         self.params_summary = QLabel("No parameters set")
         self.params_summary.setStyleSheet(
-            f"color: {Colors.ICON_MUTED}; font-size: {Typography.SMALL}px; font-style: italic;"
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
         self.params_summary.setWordWrap(True)
         layout.addWidget(self.params_summary)
@@ -307,7 +305,7 @@ class OperationCardWidget(QFrame):
             file_layout.setSpacing(8)
 
             count_layout = QHBoxLayout()
-            count_layout.addWidget(QLabel("Selected:"))
+            count_layout.addWidget(QLabel("Selected"))
             self.file_count_label = QLabel("0 files")
             self.file_count_label.setStyleSheet(
                 f"color: {Colors.TEXT_MUTED}; font-weight: 500;"
@@ -345,6 +343,7 @@ class OperationCardWidget(QFrame):
             return None
 
         self.method_combo = None
+        col = 0
         base_settings = settings["settings"][0] if settings["settings"] else None
 
         if base_settings and "options" in base_settings:
@@ -360,14 +359,16 @@ class OperationCardWidget(QFrame):
                 0,
             )
             self._settings_widgets[param_name] = self.method_combo
-            self._grid_row += 1
+            col = 1
 
         remaining = settings["settings"][1 if self.method_combo else 0 :]
         if remaining:
             new_widgets, self._grid_row = _pack_settings_into_grid(
-                self.settings_grid, remaining, start_row=self._grid_row
+                self.settings_grid, remaining, start_row=self._grid_row, start_col=col
             )
             self._settings_widgets.update(new_widgets)
+        elif col:
+            self._grid_row += 1
 
         self.method_settings_config = settings.get("method_settings", {})
 
@@ -396,14 +397,9 @@ class OperationCardWidget(QFrame):
         ]
 
         if method_settings:
-            # Separator with method name
-            separator = QLabel(f" {method} Settings")
-            separator.setFixedHeight(Colors.WIDGET_HEIGHT)
-            separator.setStyleSheet(
-                f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.SMALL}px;"
-                f"border-top: 1px solid {Colors.BORDER_DARK};"
-                f"padding-top: 6px;"
-            )
+            separator = QFrame()
+            separator.setFixedHeight(1)
+            separator.setStyleSheet(f"background: {Colors.BORDER_DARK};")
             self.settings_grid.addWidget(
                 separator, self._method_start_row, 0, 1, _COLS * 2
             )
@@ -455,6 +451,7 @@ class OperationCardWidget(QFrame):
         self.file_count_label.setText(f"{count} file{'s' if count != 1 else ''}")
 
         self.params_btn.setEnabled(True)
+        self.settings_changed.emit()
 
     def _configure_parameters(self):
         """Open dialog to configure import parameters for each file."""
@@ -618,6 +615,7 @@ class PipelineTreeWidget(QTreeWidget):
     def clear(self):
         super().clear()
         self._add_tail_spacer()
+        self.pipeline_changed.emit()
 
     def _insert_before_spacer(self, item: QTreeWidgetItem):
         idx = self.indexOfTopLevelItem(self._tail_spacer)
@@ -656,6 +654,7 @@ class PipelineTreeWidget(QTreeWidget):
 
         card_widget.removed.connect(lambda w: self._remove_card(item))
         card_widget.settings_changed.connect(lambda: self.scheduleDelayedItemsLayout())
+        card_widget.settings_changed.connect(self.pipeline_changed)
         self.pipeline_changed.emit()
         return item
 

@@ -398,7 +398,7 @@ class LinkTomogramsDialog(QDialog):
         for i, row in enumerate(self._rows):
             item = self.table.item(i, 1)
             item.setText(status_text(row) if chosen else "")
-            color = Colors.WARNING_TEXT if is_warning(row) else Colors.TEXT_SECONDARY
+            color = Colors.WARNING if is_warning(row) else Colors.TEXT_SECONDARY
             item.setForeground(QColor(color))
         self.footer.set_info(resolve_note(self._rows) if chosen else None)
         return None

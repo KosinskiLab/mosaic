@@ -193,7 +193,7 @@ class TimelineContent(QWidget):
             if track.id == self.selected_track:
                 painter.setPen(QPen(track_color, 2))
             else:
-                painter.setPen(QPen(track_color, 1))
+                painter.setPen(QPen(QColor(Colors.BORDER_DARK), 1))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(track_rect, radius, radius)
 
@@ -201,7 +201,7 @@ class TimelineContent(QWidget):
             painter.fillRect(accent_rect, track_color)
 
             if width > 40:
-                painter.setPen(track_color)
+                painter.setPen(QColor(Colors.TEXT_PRIMARY))
                 text_rect = QRect(
                     int(x + 8), track_y + 5, int(width - 16), self.track_height - 20
                 )

@@ -72,7 +72,7 @@ class SliderRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        self.label_widget = QLabel(f"{label}:")
+        self.label_widget = QLabel(label)
 
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)

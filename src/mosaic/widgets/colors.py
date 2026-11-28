@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
 
 from ..icons import icon
 from ..stylesheets import Colors, Typography
+from .dock import style_popup
 
 __all__ = [
     "ColorMapSelector",
@@ -190,22 +191,10 @@ class ColorMapSelector(QPushButton):
 
     def _build_menu(self):
         """Build the hierarchical menu with category submenus."""
-        menu = QMenu(self)
-        menu.setWindowFlags(
-            menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        menu = style_popup(QMenu(self))
 
         for category, colormaps in self._categories.items():
-            submenu = QMenu(category, menu)
-            submenu.setWindowFlags(
-                submenu.windowFlags()
-                | Qt.WindowType.FramelessWindowHint
-                | Qt.WindowType.NoDropShadowWindowHint
-            )
-            submenu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            submenu = style_popup(QMenu(category, menu))
 
             for cmap_name in colormaps:
                 action = QWidgetAction(submenu)

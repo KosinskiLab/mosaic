@@ -20,6 +20,7 @@ from .formats.writer import write_geometries
 from .swaps import GeometrySubset, GeometrySwap, apply_changes, record
 from .widgets import MosaicMessageBox
 from .widgets.container_list import StyledTreeWidgetItem
+from .widgets.dock import style_popup
 
 if TYPE_CHECKING:
     import vtk
@@ -297,13 +298,7 @@ class DataContainerInteractor(QObject):
 
         # Make sure right click also selects group members
         self.data_list._select_group_children(item)
-        context_menu = QMenu(self.data_list.window())
-        context_menu.setWindowFlags(
-            context_menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        context_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        context_menu = style_popup(QMenu(self.data_list.window()))
 
         show_action = QAction("Show", self.data_list)
         show_action.triggered.connect(
@@ -369,13 +364,7 @@ class DataContainerInteractor(QObject):
         else:
             _representation = None
 
-        representation_menu = QMenu("Representation", context_menu)
-        representation_menu.setWindowFlags(
-            representation_menu.windowFlags()
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        representation_menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        representation_menu = style_popup(QMenu("Representation", context_menu))
 
         for format_name in formats:
             if format_name is None:

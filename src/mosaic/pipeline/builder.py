@@ -8,8 +8,9 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import json
 import uuid
+from collections.abc import Callable
 
-from qtpy.QtCore import Qt
+from qtpy.QtCore import QSize, Qt
 from qtpy.QtGui import QFont
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -18,18 +19,21 @@ from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from ..settings import Settings
-from ..stylesheets import Colors, Typography
-from ..widgets import MosaicMessageBox
+from ..stylesheets import Colors, Typography, _get_resource_path
+from ..widgets import DialogFooter, MosaicMessageBox
+from ..widgets.dock import style_popup
 from ..widgets.settings import format_tooltip
-from .executor import generate_runs
+from .executor import generate_runs, run_complete
 from .operations import OPERATION_CATEGORIES, PIPELINE_PRESETS
 from .widgets import OperationCardWidget, PipelineTreeWidget
 
@@ -47,8 +51,6 @@ class PipelineBuilderDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        from ..icons import dialog_accept_icon, dialog_reject_icon, icon
-
         self.pipeline_tree = PipelineTreeWidget()
         self.pipeline_tree.pipeline_changed.connect(self._update_library_state)
 
@@ -88,9 +90,24 @@ class PipelineBuilderDialog(QDialog):
         info_label.setStyleSheet(
             f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
-        info_label.setWordWrap(True)
-        workflow_layout.addWidget(info_label)
 
+        header = QHBoxLayout()
+        header.setSpacing(4)
+        header.addWidget(info_label)
+        header.addStretch()
+        header.addWidget(self._create_presets_button())
+        header.addSpacing(4)
+        header.addWidget(
+            self._create_icon_button(
+                "ph.download", "Export pipeline", self._export_config
+            )
+        )
+        header.addWidget(
+            self._create_icon_button(
+                "ph.trash", "Clear pipeline", lambda: self._load_preset("Clear")
+            )
+        )
+        workflow_layout.addLayout(header)
         workflow_layout.addWidget(self.pipeline_tree, 1)
 
         workflow_group.setLayout(workflow_layout)
@@ -98,44 +115,10 @@ class PipelineBuilderDialog(QDialog):
 
         main_layout.addWidget(content_splitter, 1)
 
-        settings_row = QHBoxLayout()
-        settings_row.setSpacing(12)
-
-        presets_group = QGroupBox("Presets")
-        presets_container = QVBoxLayout()
-        presets_container.setSpacing(8)
-
-        presets_layout = QHBoxLayout()
-
-        preset_buttons = [
-            ("Clear", "ph.x-circle"),
-            ("Import", "ph.file-arrow-up"),
-            ("Cleanup", "ph.wrench"),
-            ("Meshing", "ph.triangle"),
-            ("Particle Picking", "ph.crosshair"),
-        ]
-
-        self.preset_buttons = {}
-        for idx, (name, _) in enumerate(preset_buttons):
-            btn = QPushButton(name)
-
-            preset_key = name.replace("\n", " ")
-            btn.clicked.connect(lambda checked, n=preset_key: self._load_preset(n))
-            presets_layout.addWidget(btn, 0)
-            self.preset_buttons[preset_key] = btn
-
-        presets_container.addLayout(presets_layout)
-        presets_container.addStretch()
-        presets_group.setLayout(presets_container)
-
-        workers_group = QGroupBox("Settings")
-        workers_layout = QHBoxLayout()
-        workers_layout.setSpacing(8)
-
-        workers_label = QLabel("Parallel Workers:")
+        workers_label = QLabel("Workers")
         workers_label.setToolTip(
             format_tooltip(
-                label="Parallel Workers",
+                label="Workers",
                 description="Number of parallel processes in the pipeline.",
                 notes="Depending on the workflow, i.e., number of steps and how many "
                 "outputs are saved, calculate approximately 8GB of RAM per worker.",
@@ -147,63 +130,102 @@ class PipelineBuilderDialog(QDialog):
         self.workers_spin.setValue(
             int(getattr(Settings.rendering, "parallel_worker", 4))
         )
-        self.workers_spin.setFixedWidth(80)
-        workers_layout.addWidget(workers_label)
-        workers_layout.addWidget(self.workers_spin)
+        self.workers_spin.setFixedWidth(64)
 
-        workers_layout.addSpacing(15)
-
-        skip_complete_label = QLabel("Skip Complete:")
-        skip_complete_label.setToolTip(
+        self.skip_complete = QCheckBox("Skip complete")
+        self.skip_complete.setChecked(True)
+        self.skip_complete.setToolTip(
             format_tooltip(
-                label="Skip Complete",
+                label="Skip complete",
                 description="Skip runs where output files already exist.",
             )
         )
-        self.skip_complete = QCheckBox()
-        workers_layout.addWidget(skip_complete_label)
-        workers_layout.addWidget(self.skip_complete)
+        self.skip_complete.toggled.connect(self._refresh_summary)
 
-        workers_layout.addStretch()
+        self.footer = DialogFooter(info_text="", dialog=self, margin=(0, 4, 0, 0))
+        self.footer.accept_button.setText("Run Pipeline")
+        self.footer.accept_button.setDefault(True)
+        footer_layout = self.footer.layout()
+        at = footer_layout.indexOf(self.footer.reject_button)
+        for offset, widget in enumerate(
+            (workers_label, self.workers_spin, self.skip_complete)
+        ):
+            footer_layout.insertWidget(at + offset, widget)
+        footer_layout.insertSpacing(at + 3, 12)
+        main_layout.addWidget(self.footer)
 
-        workers_group.setLayout(workers_layout)
+        self.pipeline_tree.pipeline_changed.connect(self._refresh_summary)
+        self._refresh_summary()
 
-        settings_row.addWidget(presets_group, 1)
-        settings_row.addWidget(workers_group)
-        main_layout.addLayout(settings_row)
+    def _create_presets_button(self):
+        """Create the menu button that starts the pipeline from a preset or file."""
+        button = QToolButton()
+        button.setText("Presets")
+        button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        button.setFixedHeight(Colors.WIDGET_HEIGHT)
+        caret = _get_resource_path("spinbox-caret-down.svg")
+        button.setStyleSheet(
+            f"""
+            QToolButton {{ padding-right: 22px; font-size: {Typography.BODY}px; }}
+            QToolButton::menu-indicator {{
+                image: url('{caret}');
+                width: 14px;
+                height: 14px;
+                subcontrol-origin: padding;
+                subcontrol-position: right center;
+                right: 4px;
+            }}
+        """
+        )
 
-        footer_layout = QHBoxLayout()
-        footer_layout.setSpacing(6)
+        menu = style_popup(QMenu(button))
+        for name in PIPELINE_PRESETS:
+            menu.addAction(name, lambda n=name: self._load_preset(n))
+        menu.addSeparator()
+        menu.addAction("From file…", self._load_config)
+        button.setMenu(menu)
+        return button
 
-        load_btn = QPushButton("Load Pipeline")
-        load_btn.clicked.connect(self._load_config)
-        load_btn.setIcon(icon("ph.upload", role="primary"))
-        footer_layout.addWidget(load_btn)
+    def _create_icon_button(self, icon_name: str, tooltip: str, slot: Callable):
+        """Create an icon-only button styled like the card buttons."""
+        from ..icons import icon
 
-        export_btn = QPushButton("Export Pipeline")
-        export_btn.clicked.connect(self._export_config)
-        export_btn.setIcon(icon("ph.download", role="primary"))
-        footer_layout.addWidget(export_btn)
+        button = QPushButton()
+        button.setIcon(icon(icon_name, role="muted"))
+        button.setFixedSize(Colors.WIDGET_HEIGHT, Colors.WIDGET_HEIGHT)
+        button.setIconSize(QSize(18, 18))
+        button.setToolTip(tooltip)
+        button.setStyleSheet(
+            f"QPushButton {{ border: none}} QPushButton:hover "
+            f"{{ background: {Colors.BG_TERTIARY}; border-radius: 12px; }}"
+        )
+        button.clicked.connect(slot)
+        return button
 
-        validate_btn = QPushButton("Validate Pipeline")
-        validate_btn.clicked.connect(self._validate_pipeline)
-        validate_btn.setIcon(icon("ph.check", role="primary"))
-        footer_layout.addWidget(validate_btn)
+    def _refresh_summary(self):
+        """Show what Run would do, or why it cannot run yet."""
+        config = self.get_pipeline_config()
+        runnable = False
+        if not config["nodes"]:
+            text = "Add Import Files to start"
+        else:
+            try:
+                runs = generate_runs(config)
+            except ValueError as e:
+                text = str(e)
+            else:
+                runnable = True
+                steps, count = len(config["nodes"]), len(runs)
+                text = f"{steps} step{'s' * (steps != 1)} · "
+                text += f"{count} run{'s' * (count != 1)}"
+                if self.skip_complete.isChecked():
+                    done = sum(run_complete(run) for run in runs)
+                    if done:
+                        text += f" · {done} done"
 
-        footer_layout.addStretch()
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setIcon(dialog_reject_icon)
-        cancel_btn.clicked.connect(self.reject)
-        footer_layout.addWidget(cancel_btn)
-
-        run_btn = QPushButton("Run Pipeline")
-        run_btn.clicked.connect(self.accept)
-        run_btn.setIcon(dialog_accept_icon)
-        run_btn.setDefault(True)
-        footer_layout.addWidget(run_btn)
-
-        main_layout.addLayout(footer_layout)
+        self.footer.set_info(text)
+        self.footer.accept_button.setEnabled(runnable)
+        return None
 
     def _create_library(self):
         """Create operation library widget with categories."""
@@ -227,7 +249,9 @@ class PipelineBuilderDialog(QDialog):
             cat_header_font.setBold(True)
             cat_header_font.setPixelSize(Typography.SMALL)
             cat_header.setFont(cat_header_font)
-            cat_header.setStyleSheet(f"color: {category['color']}; margin-top: 8px;")
+            cat_header.setStyleSheet(
+                f"color: {Colors.TEXT_SECONDARY}; margin-top: 8px;"
+            )
             layout.addWidget(cat_header)
 
             for op_name, op_info in category["operations"].items():
@@ -252,8 +276,9 @@ class PipelineBuilderDialog(QDialog):
         from ..icons import icon, icon_pixmap
 
         btn = QPushButton()
-        btn.setFixedHeight(50)
+        btn.setFixedHeight(36)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(format_tooltip(label=name, description=info["description"]))
 
         base_style = f"""
             QPushButton {{
@@ -279,23 +304,11 @@ class PipelineBuilderDialog(QDialog):
         icon_label.setPixmap(icon(info["icon"], color=color).pixmap(20, 20))
         btn_layout.addWidget(icon_label)
 
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(2)
-
         name_label = QLabel(name)
         name_label.setStyleSheet(
-            f"color: {color}; font-weight: 600; font-size: {Typography.SMALL}px;"
+            f"color: {Colors.TEXT_PRIMARY}; font-size: {Typography.BODY}px;"
         )
-        text_layout.addWidget(name_label)
-
-        desc_label = QLabel(info["description"])
-        desc_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
-        )
-        desc_label.setWordWrap(True)
-
-        text_layout.addWidget(desc_label)
-        btn_layout.addLayout(text_layout, 1)
+        btn_layout.addWidget(name_label, 1)
 
         add_icon_label = QLabel()
         add_icon_label.setPixmap(icon_pixmap("ph.plus", 14, role="muted"))
@@ -489,25 +502,6 @@ class PipelineBuilderDialog(QDialog):
         except OSError as e:
             MosaicMessageBox.warning(
                 self, "Export Error", f"Failed to export configuration: {str(e)}"
-            )
-
-    def _validate_pipeline(self):
-        """Validate the pipeline configuration."""
-        try:
-            config = self.get_pipeline_config()
-            runs = generate_runs(config)
-
-            MosaicMessageBox.information(
-                self,
-                "Validation Success",
-                f"Pipeline is valid!\n\n"
-                f"- {len(config['nodes'])} operations\n"
-                f"- {len(runs)} runs will be generated\n"
-                f"- No cycles detected",
-            )
-        except Exception as e:
-            MosaicMessageBox.warning(
-                self, "Validation Failed", f"Pipeline validation failed:\n\n{str(e)}"
             )
 
     def get_settings(self):

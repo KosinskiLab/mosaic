@@ -892,7 +892,7 @@ class StatusIndicator:
 
     def _set_task_style(self, warning: bool):
         self._task_warning = warning
-        color = Colors.WARNING_TEXT if warning else Colors.TEXT_SECONDARY
+        color = Colors.WARNING if warning else Colors.TEXT_SECONDARY
         self.task_label.setStyleSheet(
             f"color: {color}; font-size: {Typography.SMALL}px;"
         )
