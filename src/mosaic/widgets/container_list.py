@@ -798,7 +798,7 @@ def shown_defects(model: object) -> list["MeshDefect"]:
     if not isinstance(model, TriangularMesh):
         return []
     # Checking a mesh this large would stall painting the list.
-    if "defects" not in model.__dict__ and len(model.triangles) > 200_000:
+    if model._defects is None and len(model.triangles) > 200_000:
         _check_in_background(model)
         return []
     shown = {

@@ -72,7 +72,7 @@ def test_large_mesh_is_not_checked_while_painting(qapp, all_kinds_shown, monkeyp
     monkeypatch.setattr(container_list, "_check_in_background", launched.append)
     big = TriangularMesh(to_open3d(*_sphere(resolution=320)), repair=False)
     assert shown_defects(big) == []
-    assert launched == [big] and "defects" not in big.__dict__
+    assert launched == [big] and big._defects is None
 
 
 def test_choosing_a_defect_emits_it(qapp, all_kinds_shown):

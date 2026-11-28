@@ -63,3 +63,27 @@ def test_replaced_model_is_checked_again():
     vs, fs = _sphere()
     assert TriangularMesh(to_open3d(vs, fs)).defects == []
     assert TriangularMesh(to_open3d(vs, fs[1:]), repair=False).defects != []
+
+
+def test_checking_one_mesh_does_not_block_another(monkeypatch):
+    import threading
+    import time
+
+    from mosaic import meshing
+
+    def slow_for_big(vertices, faces):
+        if len(faces) > 1000:
+            time.sleep(1.0)
+        return []
+
+    monkeypatch.setattr(meshing, "check_mesh", slow_for_big)
+    big = TriangularMesh(to_open3d(*_sphere(resolution=40)), repair=False)
+    small = TriangularMesh(to_open3d(*_sphere()), repair=False)
+    worker = threading.Thread(target=lambda: big.defects)
+    worker.start()
+    time.sleep(0.1)
+    start = time.perf_counter()
+    _ = small.defects
+    elapsed = time.perf_counter() - start
+    worker.join()
+    assert elapsed < 0.5

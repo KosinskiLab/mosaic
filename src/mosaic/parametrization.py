@@ -13,7 +13,6 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import warnings
 from abc import ABC, abstractmethod
-from functools import cached_property
 from os import PathLike
 from typing import TYPE_CHECKING
 
@@ -871,6 +870,8 @@ class TriangularMesh(Parametrization):
         Triangular mesh.
     """
 
+    _defects = None
+
     def __init__(self, mesh: "open3d.geometry.TriangleMesh", repair: bool = True):
         self.mesh = mesh
 
@@ -962,10 +963,13 @@ class TriangularMesh(Parametrization):
     def triangles(self):
         return np.asarray(self.mesh.triangles)
 
-    @cached_property
+    @property
     def defects(self) -> list["meshing.MeshDefect"]:
         """Holes, twisted spots and non-manifold edges left on the mesh."""
-        return meshing.check_mesh(self.vertices, self.triangles)
+        # functools.cached_property locks all instances together before 3.12.
+        if self._defects is None:
+            self._defects = meshing.check_mesh(self.vertices, self.triangles)
+        return self._defects
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs):

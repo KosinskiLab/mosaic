@@ -102,13 +102,17 @@ def check_mesh(
                     MeshDefect("hole", np.unique(edges), float(length[mask].sum()))
                 )
 
-    keys, dcounts = np.unique(directed[uses == 2], axis=0, return_counts=True)
+    pairs = directed[uses == 2]
+    keys, dcounts = np.unique(pairs[:, 0] * n + pairs[:, 1], return_counts=True)
+    repeated = keys[dcounts > 1]
     used = np.zeros(n, dtype=bool)
     used[faces.ravel()] = True
     manifold = np.ones(n, dtype=bool)
     result = np.asarray(igl.is_vertex_manifold(faces), dtype=bool)
     manifold[: len(result)] = result
-    twisted = np.union1d(keys[dcounts > 1].ravel(), np.flatnonzero(~manifold & used))
+    twisted = np.union1d(
+        np.concatenate([repeated // n, repeated % n]), np.flatnonzero(~manifold & used)
+    )
     if len(twisted):
         defects.append(MeshDefect("twisted", twisted.astype(np.int64)))
 
