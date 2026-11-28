@@ -510,3 +510,15 @@ class HistogramRangeSlider(QWidget):
     def getRange(self):
         """Get the current selected range."""
         return self._slider.lower_pos, self._slider.upper_pos
+
+    def setSelection(self, lower: float, upper: float) -> None:
+        """Move the handles and highlight the range without emitting signals.
+
+        Parameters
+        ----------
+        lower, upper : float
+            Range bounds in data units.
+        """
+        self._slider.setValues(lower, upper)
+        self._histogram.setSelection(lower, upper)
+        return None
