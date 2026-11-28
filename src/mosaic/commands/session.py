@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from ..geometry import Geometry
     from ..swaps import GeometrySubset, GeometrySwap
 
-__all__ = ["Session"]
+__all__ = ["Session", "StepFailed"]
 
 
 class _SessionTarget:
@@ -58,6 +58,24 @@ class _SessionTarget:
         return None
 
 
+class StepFailed(RuntimeError):
+    """An operation failed on one or more geometries in a strict session.
+
+    Parameters
+    ----------
+    step : str
+        Name of the operation.
+    failures : list of tuple of str
+        Geometry name and reason for each failed geometry.
+    """
+
+    def __init__(self, step: str, failures: list[tuple[str, str]]):
+        self.step = step
+        self.failures = failures
+        details = "; ".join(f"{name}: {reason}" for name, reason in failures)
+        super().__init__(f"{step} failed for {details}")
+
+
 class Session:
     """Headless workspace that holds geometry data and dispatches operations.
 
@@ -69,7 +87,7 @@ class Session:
         Container for fitted mesh/model geometries.
     """
 
-    def __init__(self, quiet: bool = False):
+    def __init__(self, quiet: bool = False, strict: bool = False):
         self._data = DataContainer()
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
         self._data_tree = TreeStateData()
@@ -81,6 +99,7 @@ class Session:
         self._counter: int = 0
         self.metadata: dict = {}
         self.quiet: bool = quiet
+        self.strict: bool = strict
 
     def _update_shape(self, data_shape: ArrayLike, sampling: ArrayLike) -> None:
         """Extend the session bounding box to include *data_shape*."""
@@ -628,6 +647,11 @@ class Session:
         from ..swaps import place
 
         results, errors = self._run_parallel(func, geometries, operation_name, **kwargs)
+        failures = [
+            (str(geometries[i]._meta.get("name", i)), str(exc)) for i, exc in errors
+        ]
+        if failures and self.strict:
+            raise StepFailed(operation_name, failures)
 
         created, data_geoms, model_geoms = [], [], []
         for result in results:
@@ -665,10 +689,10 @@ class Session:
                 )
             self._order.extend(created)
 
-        if errors:
-            msgs = [f"#{i}: {e}" for i, e in errors]
+        if failures:
+            msgs = [f"{name}: {reason}" for name, reason in failures]
             warnings.warn(
-                f"{len(errors)}/{len(geometries)} failed:\n  " + "\n  ".join(msgs)
+                f"{len(failures)}/{len(geometries)} failed:\n  " + "\n  ".join(msgs)
             )
 
         self._last_results = created
