@@ -306,6 +306,9 @@ def _output_paths(op: dict, run_config: dict) -> list[str]:
         return [f"{base}.mosaic"]
     if op["operation_id"] == "export_data":
         return [f"{base}.{settings.get('format', 'star')}"]
+    if op["operation_id"] == "mesh_analysis" and settings.get("output_dir", "").strip():
+        name = settings.get("method", "").lower().replace(" ", "_")
+        return [f"{base}_{name}.csv"]
     return []
 
 
@@ -334,8 +337,8 @@ def _write_failure_dump(session: "Session", run_config: dict) -> str:
     output_dirs = [
         op["settings"]["output_dir"]
         for op in run_config["operations"]
-        if op["operation_id"] in ("save_session", "export_data")
-        and op["settings"].get("output_dir")
+        if op["operation_id"] in ("save_session", "export_data", "mesh_analysis")
+        and op["settings"].get("output_dir", "").strip()
     ]
     directory = output_dirs[0] if output_dirs else os.getcwd()
     known = {geometry.uuid for geometry in session._all_geometries()}
@@ -391,7 +394,6 @@ def execute_run(
             for line in _compile_operation(op, run_config):
                 repl.execute(line)
         except Exception as exc:
-            _write_failure_dump(repl.session, run_config)
             for path in written:
                 if os.path.exists(path):
                     os.remove(path)
@@ -400,6 +402,11 @@ def execute_run(
             if isinstance(exc, StepFailed):
                 where += ", " + ", ".join(name for name, _ in exc.failures)
                 reason = "; ".join(reason for _, reason in exc.failures)
-            raise RuntimeError(f"Error in {where}: {reason}") from exc
+            error = RuntimeError(f"Error in {where}: {reason}")
+            try:
+                _write_failure_dump(repl.session, run_config)
+            except Exception as dump_error:
+                error.add_note(f"Could not write the failure dump: {dump_error}")
+            raise error from exc
         written.extend(_output_paths(op, run_config))
     return None

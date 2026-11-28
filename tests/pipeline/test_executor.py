@@ -469,3 +469,39 @@ def test_skip_complete_reruns_a_failed_run(tmp_path):
     with pytest.raises(RuntimeError):
         execute_run(r)
     assert run_complete(r) is False
+
+
+def test_failed_run_removes_analysis_outputs(tmp_path):
+    source = tmp_path / "cloud.csv"
+    cloud = np.random.default_rng(0).normal(50, 5, size=(200, 3))
+    np.savetxt(source, cloud, delimiter=",", header="x,y,z", comments="")
+    r = _run(
+        [
+            _import_op(str(source)),
+            _op("fit", {"method": "Alpha Shape"}),
+            _op("mesh_analysis", {"method": "Area", "output_dir": str(tmp_path)}),
+            _op("fit", {"method": "Ball Pivoting", "radii": "0.001"}),
+        ],
+        input_file=str(source),
+    )
+    with pytest.raises(RuntimeError):
+        execute_run(r)
+    assert list(tmp_path.glob("*.csv")) == [source]
+
+
+def test_unwritable_dump_does_not_hide_the_failure(tmp_path):
+    from mosaic.commands.session import StepFailed
+
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)
+    r, _ = _failing_run(tmp_path, outputs=False)
+    r["operations"].append(
+        _op("export_data", {"output_dir": str(locked), "format": "xyz"})
+    )
+    try:
+        with pytest.raises(RuntimeError) as info:
+            execute_run(r)
+    finally:
+        locked.chmod(0o700)
+    assert isinstance(info.value.__cause__, StepFailed)
