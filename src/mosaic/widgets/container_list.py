@@ -46,6 +46,8 @@ from .message_box import MosaicMessageBox
 if TYPE_CHECKING:
     from ..data import MosaicData
     from ..geometry import Geometry
+    from ..meshing.check import MeshDefect
+    from ..parametrization import TriangularMesh
 
 
 class SelectionIndicator(QWidget):
@@ -177,6 +179,8 @@ class ContainerTreeWidget(QFrame):
     """Drop-in replacement for ContainerListWidget using QTreeWidget for grouping support."""
 
     structure_changed = Signal()
+    defect_requested = Signal(object, object)
+    defect_hidden = Signal()
 
     def __init__(self, title: str | None = None, compact: bool = False):
         super().__init__()
@@ -211,6 +215,10 @@ class ContainerTreeWidget(QFrame):
             MetadataItemDelegate(self.tree_widget, compact=compact)
         )
         self._selection_indicator = SelectionIndicator(self.tree_widget)
+        self._defect_menu = None
+        self.tree_widget.active_defect_geometry = None
+        self.tree_widget.viewport().installEventFilter(_DefectIconClicks(self))
+        _defect_notifier().checked.connect(self.tree_widget.viewport().update)
 
         layout.addWidget(self.tree_widget)
 
@@ -226,6 +234,33 @@ class ContainerTreeWidget(QFrame):
             }}
             """
         )
+
+    def set_active_defect(self, geometry: "Geometry | None") -> None:
+        """Draw the attention icon of ``geometry``'s row filled, or none.
+
+        Parameters
+        ----------
+        geometry : Geometry or None
+            Geometry whose defect is highlighted in the viewport.
+        """
+        self.tree_widget.active_defect_geometry = geometry
+        self.tree_widget.viewport().update()
+        return None
+
+    def _open_defect_menu(self, geometry: "Geometry", defects: list, rect: QRect):
+        menu = style_popup(QMenu(self))
+        if self.tree_widget.active_defect_geometry is geometry:
+            menu.addAction("Hide").triggered.connect(self.defect_hidden.emit)
+            menu.addSeparator()
+        for defect in defects:
+            action = menu.addAction(_defect_label(defect))
+            action.triggered.connect(
+                lambda _=False, d=defect: self.defect_requested.emit(geometry, d)
+            )
+        viewport = self.tree_widget.viewport()
+        menu.popup(viewport.mapToGlobal(rect.bottomLeft() + QPoint(0, 4)))
+        self._defect_menu = menu
+        return None
 
     def selected_items(self):
         # We specifically omit GroupTreeWidgetItem
@@ -713,6 +748,109 @@ class SessionTreeItem(QTreeWidgetItem):
     """Row of the session list."""
 
 
+class _DefectNotifier(QObject):
+    checked = Signal()
+
+
+_pending_checks: set[int] = set()
+_notifier: _DefectNotifier | None = None
+
+
+def _defect_notifier() -> _DefectNotifier:
+    global _notifier
+    if _notifier is None:
+        _notifier = _DefectNotifier()
+    return _notifier
+
+
+def _check_in_background(model: "TriangularMesh") -> None:
+    from qtpy.QtCore import QThreadPool
+
+    if id(model) in _pending_checks:
+        return None
+    _pending_checks.add(id(model))
+    notifier = _defect_notifier()
+
+    def run():
+        _ = model.defects
+        _pending_checks.discard(id(model))
+        notifier.checked.emit()
+
+    QThreadPool.globalInstance().start(run)
+    return None
+
+
+def shown_defects(model: object) -> list["MeshDefect"]:
+    """Return the defects of ``model`` whose kind is shown.
+
+    Parameters
+    ----------
+    model : object
+        A geometry's model; anything but a triangle mesh has no defects.
+
+    Returns
+    -------
+    list of MeshDefect
+        Defects whose kind is ticked under Preferences > Mesh Check.
+    """
+    from ..parametrization import TriangularMesh
+
+    if not isinstance(model, TriangularMesh):
+        return []
+    # Checking a mesh this large would stall painting the list.
+    if "defects" not in model.__dict__ and len(model.triangles) > 200_000:
+        _check_in_background(model)
+        return []
+    shown = {
+        "hole": Settings.ui.mesh_check_holes,
+        "twisted": Settings.ui.mesh_check_twisted,
+        "nonmanifold": Settings.ui.mesh_check_nonmanifold,
+    }
+    return [defect for defect in model.defects if shown[defect.kind]]
+
+
+def _defect_label(defect: "MeshDefect") -> str:
+    if defect.kind == "hole":
+        return f"Hole, {defect.perimeter:,.0f} Å around"
+    if defect.kind == "twisted":
+        return "Twisted spot"
+    return "Non-manifold edge"
+
+
+def _defect_icon_rect(row_rect: QRect) -> QRect:
+    size = 16
+    return QRect(
+        row_rect.right() - size - 10,
+        row_rect.top() + (row_rect.height() - size) // 2,
+        size,
+        size,
+    )
+
+
+class _DefectIconClicks(QObject):
+    """Opens the defect menu when the attention icon of a row is pressed."""
+
+    def __init__(self, container: "ContainerTreeWidget"):
+        super().__init__(container)
+        self.container = container
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if event.type() != QEvent.Type.MouseButtonPress:
+            return False
+        tree = self.container.tree_widget
+        pos = event.position().toPoint()
+        item = tree.itemAt(pos)
+        geometry = getattr(item, "_geometry", None)
+        if geometry is None:
+            return False
+        defects = shown_defects(geometry.model)
+        rect = _defect_icon_rect(tree.visualItemRect(item))
+        if not defects or not rect.adjusted(-4, -4, 4, 4).contains(pos):
+            return False
+        self.container._open_defect_menu(geometry, defects, rect)
+        return True
+
+
 class MetadataItemDelegate(QStyledItemDelegate):
     """Delegate for custom selection/hover painting."""
 
@@ -817,6 +955,15 @@ class MetadataItemDelegate(QStyledItemDelegate):
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)
         painter.restore()
+
+        geometry = getattr(item, "_geometry", None)
+        if geometry is not None and shown_defects(geometry.model):
+            name = "ph.warning-circle"
+            if getattr(tree_widget, "active_defect_geometry", None) is geometry:
+                name = "ph.warning-circle-fill"
+            _icon_factory(name, color=Colors.WARNING).paint(
+                painter, _defect_icon_rect(option.rect)
+            )
 
 
 class _CheckableMenu(QMenu):

@@ -125,6 +125,9 @@ class UISettings:
     onboarding_done: bool = False
     load_linked_tomogram: bool = True
     last_tomogram_folder: str = ""
+    mesh_check_holes: bool = True
+    mesh_check_twisted: bool = True
+    mesh_check_nonmanifold: bool = True
 
 
 @dataclass
