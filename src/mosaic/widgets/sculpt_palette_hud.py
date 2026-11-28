@@ -8,8 +8,13 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt, Signal
-from qtpy.QtGui import QColor, QEnterEvent, QPainter, QPaintEvent, QPen, QShowEvent
+from qtpy.QtCore import (
+    QPoint,
+    QRect,
+    QSize,
+    Qt,
+    Signal,
+)
 from qtpy.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -21,6 +26,7 @@ from qtpy.QtWidgets import (
 from ..sculpt.session import TOOLS
 from ..stylesheets import Colors, Typography
 from .sliders import SliderRow
+from .viewport_hud import ViewportHUD
 
 if TYPE_CHECKING:
     from ..gui import App
@@ -77,35 +83,16 @@ QPushButton:checked {{
 """
 
 
-class SculptPaletteHUD(QWidget):
+class SculptPaletteHUD(ViewportHUD):
     """Floating palette providing sculpt tool selection and brush parameters."""
 
     toolChanged = Signal(str)
     radiusChanged = Signal(float)
     strengthChanged = Signal(float)
 
-    _BG_IDLE = QColor(30, 32, 38, 160)
-    _BG_HOVER = QColor(36, 38, 46, 235)
-    _BORDER = QColor(255, 255, 255, 25)
-    _RADIUS = 6
-    _MARGIN = 12
-
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowFlags(
-            self.windowFlags()
-            | Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.NoDropShadowWindowHint
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setMouseTracking(True)
-
-        self._viewport_parent = None
-        self._top_window = None
         self._app = None
-        self._hovered = False
         self._suppress_tool_signal = False
         self._suppress_radius_signal = False
         self._suppress_strength_signal = False
@@ -246,85 +233,11 @@ class SculptPaletteHUD(QWidget):
             The main application window (provides ``viewport_container``).
         """
         self._app = app
-        self._viewport_parent = app.viewport_container
-        self._viewport_parent.installEventFilter(self)
+        self.attach_to_viewport(app.viewport_container)
+        return None
 
-        self._top_window = self.parent()
-        if self._top_window is not None:
-            self._top_window.installEventFilter(self)
-
-        self._reposition()
-
-    def eventFilter(self, obj: QObject, event: QEvent):
-        viewport_parent = getattr(self, "_viewport_parent", None)
-        top_window = getattr(self, "_top_window", None)
-        if viewport_parent is None and top_window is None:
-            return False
-
-        etype = event.type()
-        if obj is viewport_parent and etype == QEvent.Type.Resize:
-            self._reposition()
-        elif obj is top_window:
-            if etype in (
-                QEvent.Type.Move,
-                QEvent.Type.Resize,
-                QEvent.Type.WindowStateChange,
-            ):
-                self._reposition()
-            elif etype == QEvent.Type.Hide and self.isVisible():
-                self._was_visible = True
-                self.hide()
-            elif etype == QEvent.Type.Show and getattr(self, "_was_visible", False):
-                self._was_visible = False
-                self.show()
-        return super().eventFilter(obj, event)
-
-    def showEvent(self, event: QShowEvent):
-        super().showEvent(event)
-        self._reposition()
-
-    def _reposition(self):
-        if self._viewport_parent is None or not self.isVisible():
-            return
-        vp = self._viewport_parent
-        if vp.width() <= 0 or vp.height() <= 0:
-            return
-
-        layout = self.layout()
-        if layout is not None:
-            layout.invalidate()
-            layout.activate()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
-
-        hint = self.sizeHint()
-        w = hint.width()
-        h = hint.height()
-        self.setMinimumSize(self.minimumSizeHint())
-
-        top_left = vp.mapToGlobal(QPoint(0, 0))
-        x = top_left.x() + self._MARGIN
-        y = top_left.y() + vp.height() - h - self._MARGIN
-        self.setGeometry(x, y, w, h)
-
-    def enterEvent(self, event: QEnterEvent):
-        self._hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event: QEvent):
-        self._hovered = False
-        self.update()
-        super().leaveEvent(event)
-
-    def paintEvent(self, event: QPaintEvent):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = self.rect().adjusted(1, 1, -1, -1)
-        bg = self._BG_HOVER if self._hovered else self._BG_IDLE
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bg)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.setPen(QPen(self._BORDER, 0.5))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawRoundedRect(r, self._RADIUS, self._RADIUS)
-        p.end()
+    def anchor(self, viewport: QRect, size: QSize) -> QPoint:
+        return QPoint(
+            viewport.left() + self._MARGIN,
+            viewport.top() + viewport.height() - size.height() - self._MARGIN,
+        )
