@@ -422,7 +422,7 @@ class BackgroundTaskManager(QObject):
             max_workers=4,
             thread_name_prefix="mosaic-io",
         )
-        self._executor_context.enter_context(MemoryWatchdog())
+        self._watchdog = self._executor_context.enter_context(MemoryWatchdog())
 
         self.running_tasks.emit(len(self.futures) + len(self.io_futures))
 
@@ -747,6 +747,8 @@ class BackgroundTaskManager(QObject):
 
             except concurrent.futures.process.BrokenProcessPool as e:
                 error_msg = f"Worker process died unexpectedly: {str(e)}"
+                if self._watchdog.tripped:
+                    error_msg = "Stopped: worker memory exceeded 80% of physical memory"
                 self.task_failed.emit(task_id, task_name, error_msg)
                 executor_broken = True
 

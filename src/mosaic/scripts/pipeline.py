@@ -101,7 +101,7 @@ Examples:
     completed = 0
     failed = 0
     with (
-        MemoryWatchdog(),
+        MemoryWatchdog() as watchdog,
         ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool,
     ):
         futures = {
@@ -128,6 +128,12 @@ Examples:
                     file=sys.stderr,
                 )
 
+    if watchdog.tripped:
+        print(
+            "Worker memory exceeded 80% of physical memory; the largest worker was "
+            "stopped and its run failed",
+            file=sys.stderr,
+        )
     if failed:
         print(f"{failed}/{total} runs failed", file=sys.stderr)
     return 1 if failed else 0

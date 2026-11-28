@@ -56,7 +56,7 @@ class MemoryWatchdog:
         self._thread.join()
 
     def _watch(self) -> None:
-        """Poll child memory and kill descendants when the limit is exceeded."""
+        """Poll child memory and kill the largest child above the limit."""
         parent = psutil.Process()
         while not self._stop.wait(self._interval):
             try:
@@ -64,13 +64,13 @@ class MemoryWatchdog:
             except psutil.Error:
                 continue
 
-            rss = 0
+            sizes = {}
             for child in children:
                 with suppress(psutil.NoSuchProcess, psutil.AccessDenied):
-                    rss += child.memory_info().rss
+                    sizes[child] = child.memory_info().rss
 
-            if rss > self._limit_bytes:
+            # Killing only the runaway worker lets its pool fail just that task.
+            if sizes and sum(sizes.values()) > self._limit_bytes:
                 self.tripped = True
-                for child in reversed(children):
-                    with suppress(psutil.NoSuchProcess, psutil.AccessDenied):
-                        child.kill()
+                with suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+                    max(sizes, key=sizes.get).kill()
