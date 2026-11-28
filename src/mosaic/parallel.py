@@ -15,6 +15,7 @@ import threading
 import uuid
 import warnings
 from collections.abc import Callable, Iterable, Sequence
+from contextlib import ExitStack
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -23,6 +24,7 @@ from warnings import WarningMessage
 from qtpy.QtCore import QObject, QTimer, Signal
 
 from .settings import Settings
+from .watchdog import MemoryWatchdog
 
 __all__ = [
     "_init_worker",
@@ -343,6 +345,7 @@ class BackgroundTaskManager(QObject):
         self.task_info: dict[str, dict[str, Any]] = {}
         self.futures: dict[str, concurrent.futures.Future] = {}
         self.io_futures: dict[str, concurrent.futures.Future] = {}
+        self._executor_context = ExitStack()
 
         # Batch limits
         self.batch_limits: dict[str, int] = {}
@@ -419,6 +422,7 @@ class BackgroundTaskManager(QObject):
             max_workers=4,
             thread_name_prefix="mosaic-io",
         )
+        self._executor_context.enter_context(MemoryWatchdog())
 
         self.running_tasks.emit(len(self.futures) + len(self.io_futures))
 
@@ -446,6 +450,7 @@ class BackgroundTaskManager(QObject):
             self.executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
+        self._executor_context.close()
 
         try:
             self.io_executor.shutdown(wait=False, cancel_futures=True)

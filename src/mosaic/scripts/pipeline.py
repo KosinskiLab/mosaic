@@ -14,6 +14,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from mosaic.pipeline.executor import execute_run, generate_runs
+from mosaic.watchdog import MemoryWatchdog
 
 
 def run_wrapper(run_config: dict, skip_complete: bool = False):
@@ -99,7 +100,10 @@ Examples:
 
     completed = 0
     failed = 0
-    with ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool:
+    with (
+        MemoryWatchdog(),
+        ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool,
+    ):
         futures = {
             pool.submit(run_wrapper, run, args.skip_complete): run for run in runs
         }
