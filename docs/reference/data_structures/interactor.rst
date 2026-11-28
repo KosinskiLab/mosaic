@@ -4,10 +4,10 @@ DataContainerInteractor
 .. currentmodule:: mosaic.interactor
 
 :class:`DataContainerInteractor` mediates between a
-:class:`~mosaic.container.DataContainer` and the GUI: it owns the VTK pickers,
-the tree-widget representation of the container, and the geometry operations
-exposed in the ribbon.  :class:`~mosaic.data.MosaicData` holds two of them,
-``data`` for point clouds and ``models`` for fitted models.
+:class:`~mosaic.container.DataContainer` and its tree widget. It manages
+selection and edits for one container. :class:`~mosaic.data.MosaicData` holds
+two of them, ``data`` for point clouds and ``models`` for fitted models. Both
+share a :class:`~mosaic.viewport.ViewportInteractor`.
 
 
 Constructor
@@ -18,21 +18,6 @@ Constructor
    :nosignatures:
 
    DataContainerInteractor
-
-
-Interaction Modes
-~~~~~~~~~~~~~~~~~
-
-The interactor switches between three pointer modes (viewing, drawing, and
-picking) and owns the area picker used for box selection.
-
-.. autosummary::
-   :toctree: ../rst/
-
-   DataContainerInteractor.attach_area_picker
-   DataContainerInteractor.activate_viewing_mode
-   DataContainerInteractor.activate_drawing_mode
-   DataContainerInteractor.activate_picking_mode
 
 
 Selection
@@ -60,24 +45,18 @@ Data Management
    DataContainerInteractor.merge
    DataContainerInteractor.remove
    DataContainerInteractor.update
-   DataContainerInteractor.undo
 
 
 Geometry Operations
 ~~~~~~~~~~~~~~~~~~~
 
-These methods are dispatched to :class:`~mosaic.operations.GeometryOperations`
-via the operation registry. They apply the named operation to every selected
-geometry, optionally as a background task.
+The ribbon runs processing operations such as clustering and downsampling
+through :class:`~mosaic.operations.GeometryOperations` on the selected
+geometries.
 
 .. autosummary::
    :toctree: ../rst/
 
-   DataContainerInteractor.cluster
-   DataContainerInteractor.skeletonize
-   DataContainerInteractor.downsample
-   DataContainerInteractor.remove_outliers
-   DataContainerInteractor.compute_normals
    DataContainerInteractor.duplicate
    DataContainerInteractor.visibility
 
@@ -93,4 +72,3 @@ Visualization
    DataContainerInteractor.change_representation
    DataContainerInteractor.render
    DataContainerInteractor.render_vtk
-   DataContainerInteractor.refresh_actors

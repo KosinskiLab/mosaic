@@ -5,18 +5,15 @@ MosaicData
 
 :class:`MosaicData` is the central application-state object for the GUI.  It
 wraps a headless :class:`~mosaic.commands.session.Session` with two
-:class:`~mosaic.interactor.DataContainerInteractor` instances, one for point
-clouds and one for fitted models, and coordinates between them.
+:class:`~mosaic.interactor.DataContainerInteractor` instances and a shared
+:class:`~mosaic.viewport.ViewportInteractor`.
 
-Each instance carries the following attributes:
+Each instance provides these attributes.
 
-* ``data``: :class:`~mosaic.interactor.DataContainerInteractor` over the
-  point-cloud container.
-* ``models``: :class:`~mosaic.interactor.DataContainerInteractor` over the
-  fitted-model container.
-* ``active_picker``: name of the container currently bound to the area
-  picker (``"data"`` or ``"models"``).
-* ``shape``: bounding-box shape of the point-cloud workspace.
+* ``data`` is the interactor for the point-cloud container.
+* ``models`` is the interactor for the fitted-model container.
+* ``viewport`` manages interaction modes, picking, and rendering for both containers.
+* ``shape`` is the bounding-box shape of the point-cloud workspace.
 
 
 Constructor
@@ -41,28 +38,13 @@ File I/O
    MosaicData.reset
 
 
-Interaction Modes
-~~~~~~~~~~~~~~~~~
-
-.. autosummary::
-   :toctree: ../rst/
-
-   MosaicData.activate_viewing_mode
-   MosaicData.activate_picking_mode
-   MosaicData.swap_area_picker
-   MosaicData.highlight_clusters_from_selected_points
-
-
 Visualization
 ~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: ../rst/
 
-   MosaicData.set_coloring_mode
-   MosaicData.visibility_unselected
    MosaicData.refresh_lod
-   MosaicData.refresh_actors
 
 
 Session Hooks

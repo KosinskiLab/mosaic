@@ -630,7 +630,8 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
     """
     Cluster points by iterative center-of-mass aggregation within a cutoff.
 
-    Random unassigned points are used as seeds. For each seed, all unassigned
+    Unassigned points drawn with a fixed random seed are used as seeds, so
+    repeated calls give the same result. For each seed, all unassigned
     neighbors within ``cutoff`` are grouped and replaced by their center of mass.
     The process repeats until every point has been assigned.
 
@@ -656,13 +657,14 @@ def com_cluster_points(positions: np.ndarray, cutoff: float) -> np.ndarray:
         cutoff = np.max(cutoff)
 
     tree = KDTree(positions)
+    rng = np.random.default_rng(0)
     n_points = len(positions)
     unassigned = np.ones(n_points, dtype=bool)
     clusters = []
 
     unassigned_indices = np.where(unassigned)[0]
     while np.any(unassigned):
-        seed_idx = np.random.choice(unassigned_indices)
+        seed_idx = rng.choice(unassigned_indices)
 
         cluster_indices = tree.query_ball_point(positions[seed_idx], cutoff)
         cluster_indices = np.array([idx for idx in cluster_indices if unassigned[idx]])

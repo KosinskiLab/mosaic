@@ -17,6 +17,7 @@ from mosaic.operations import (
     smooth,
     visibility,
 )
+from mosaic.registry import MethodRegistry
 
 
 class TestCluster:
@@ -103,6 +104,21 @@ class TestDownsample:
     def test_center_of_mass(self, cloud):
         result = downsample(cloud, method="center_of_mass", radius=20.0)
         assert result.points.shape[0] < cloud.points.shape[0]
+
+    def test_center_of_mass_is_the_default(self, cloud):
+        np.testing.assert_array_equal(
+            downsample(cloud).points,
+            downsample(cloud, method="center_of_mass").points,
+        )
+
+    def test_gui_offers_only_center_of_mass(self):
+        settings = MethodRegistry.settings_dict("downsample")
+        assert settings["settings"][0]["options"] == ["Center of Mass"]
+
+    def test_center_of_mass_is_reproducible(self, cloud):
+        first = downsample(cloud, method="center_of_mass", radius=10.0)
+        second = downsample(cloud, method="center_of_mass", radius=10.0)
+        np.testing.assert_array_equal(first.points, second.points)
 
 
 class TestFit:
@@ -332,6 +348,22 @@ class TestRemesh:
             mesh_geom, method="subdivide", number_of_iterations=1, smooth=True
         )
         assert result is not None
+
+    def test_edge_length_keeps_mesh_it_cannot_remesh(self):
+        import open3d as o3d
+
+        from mosaic.meshing.utils import to_open3d
+        from mosaic.parametrization import TriangularMesh
+
+        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=10, resolution=10)
+        vs, fs = np.asarray(sphere.vertices), np.asarray(sphere.triangles).copy()
+        fs[0] = fs[0][::-1]
+        geom = GeometryData(
+            points=vs, model=TriangularMesh(to_open3d(vs, fs), repair=False)
+        )
+        with pytest.warns(UserWarning):
+            result = remesh(geom, method="edge_length", target_edge_length=2.0)
+        assert len(result.model.triangles) == len(fs)
 
     def test_vertex_clustering(self, mesh_geom):
         result = remesh(mesh_geom, method="vertex_clustering", voxel_size=20.0)

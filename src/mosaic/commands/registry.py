@@ -22,7 +22,7 @@ from rich.text import Text
 
 from ..formats.session import is_session_file
 from ..registry import _UNSET
-from .parser import ParsedCommand
+from .parser import ParsedCommand, _coerce_value
 from .theme import BOX_PANEL, BOX_TABLE, get_console
 
 if TYPE_CHECKING:
@@ -148,6 +148,8 @@ class CommandRegistry:
                 if method is not None:
                     all_params += list(method.params)
             for p in all_params:
+                if p.type in ("str", "path") and p.name in parsed.raw_kwargs:
+                    parsed.kwargs[p.name] = parsed.raw_kwargs[p.name]
                 if p.name not in parsed.kwargs and p.default is not _UNSET:
                     parsed.kwargs[p.name] = p.default
 
@@ -899,12 +901,11 @@ def _cmd_filter(session: "Session", parsed: ParsedCommand):
     if prop is None:
         return _error_panel("Missing required parameter: property=<name>")
 
-    # Parser leaves unbracketed comma strings intact for non-numeric values;
-    # split here so session.filter sees a list rather than the literal "a,b".
+    # Labels are numbers or names depending on the property, so convert per item.
     for key in ("include", "exclude"):
         val = kwargs.get(key)
-        if isinstance(val, str) and "," in val:
-            kwargs[key] = [v.strip() for v in val.split(",")]
+        if isinstance(val, str):
+            kwargs[key] = [_coerce_value(v.strip()) for v in val.split(",")]
 
     try:
         kept, removed, level = session.filter(geometries, prop_name=prop, **kwargs)

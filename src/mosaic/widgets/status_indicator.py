@@ -39,6 +39,7 @@ from ..icons import icon
 from ..parallel import BackgroundTaskManager
 from ..path_display import set_path_text
 from ..stylesheets import Colors, Typography
+from .follow_window import follow_window
 
 if TYPE_CHECKING:
     from ..gui import App
@@ -131,7 +132,8 @@ class TaskCard(QFrame):
         row.addWidget(self.icon_label)
 
         self.spinner = TextSpinnerLabel()
-        self.spinner.setFixedWidth(14)
+        self.spinner.setFixedWidth(16)
+        self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.spinner.setVisible(False)
         row.addWidget(self.spinner)
 
@@ -170,8 +172,11 @@ class TaskCard(QFrame):
 
         self.main_layout.addWidget(row_widget)
 
+        self._output_container = None
+
+    def _build_output(self):
+        """Create the stdout and stderr views, on first expand."""
         self._output_container = QWidget()
-        self._output_container.setVisible(False)
         output_layout = QHBoxLayout(self._output_container)
         output_layout.setContentsMargins(0, 4, 0, 4)
         output_layout.setSpacing(4)
@@ -205,6 +210,7 @@ class TaskCard(QFrame):
         output_layout.addWidget(self._stderr_group)
 
         self.main_layout.addWidget(self._output_container)
+        return None
 
     def _apply_status(self):
         accent = self._ACCENT.get(self.status, Colors.BORDER_DARK)
@@ -328,6 +334,8 @@ class TaskCard(QFrame):
     def _toggle_expanded(self):
         self.expanded = not self.expanded
         if self.expanded:
+            if self._output_container is None:
+                self._build_output()
             self._update_output()
             self.setMinimumHeight(0)
         else:
@@ -579,6 +587,7 @@ class StatusIndicator:
         self._active_io_task_id: str | None = None
 
         self.task_monitor = TaskMonitorPanel(self.main_window)
+        follow_window(self.task_monitor, self._place_task_monitor)
 
         self._setup_status_bar()
         self.update_status()
@@ -1003,6 +1012,11 @@ class StatusIndicator:
             self.task_monitor.hide()
             return
 
+        self._place_task_monitor()
+        self.task_monitor.show()
+        self.task_monitor.raise_()
+
+    def _place_task_monitor(self):
         # Position above the status bar, right-aligned (offset by margin)
         status_bar = self.main_window.statusBar()
         bar_top_right = status_bar.mapToGlobal(status_bar.rect().topRight())
@@ -1011,8 +1025,6 @@ class StatusIndicator:
         x = bar_top_right.x() - panel.width() + m
         y = bar_top_right.y() - panel.height() + m
         panel.move(x, y)
-        panel.show()
-        panel.raise_()
 
     def show(self, *args, **kwargs):
         self.visible = True

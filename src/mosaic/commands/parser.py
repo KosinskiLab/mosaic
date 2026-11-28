@@ -166,12 +166,15 @@ class ParsedCommand:
         Positional arguments (e.g. file paths, sub-commands).
     kwargs : dict
         Keyword arguments with auto-coerced values.
+    raw_kwargs : dict
+        Keyword arguments as written, for parameters declared as text.
     """
 
     verb: str
     targets: list[str] = field(default_factory=list)
     args: list[str] = field(default_factory=list)
     kwargs: dict[str, Any] = field(default_factory=dict)
+    raw_kwargs: dict[str, str] = field(default_factory=dict)
 
     def resolve_positional(self, params: list) -> None:
         """Map remaining positional *args* into *kwargs* by parameter order.
@@ -237,12 +240,13 @@ def parse_command(text: str) -> ParsedCommand | None:
     verb = tokens[0].lower()
     targets = []
     args = []
-    kwargs = {}
+    kwargs, raw_kwargs = {}, {}
 
     for token in tokens[1:]:
         if "=" in token and not token.startswith("="):
             key, _, val = token.partition("=")
             kwargs[key] = _coerce_value(val)
+            raw_kwargs[key] = val
         elif _TARGET_RE.match(token) or token in _SPECIAL_TARGETS:
             targets.append(token)
         else:
@@ -253,4 +257,5 @@ def parse_command(text: str) -> ParsedCommand | None:
         targets=targets,
         args=args,
         kwargs=kwargs,
+        raw_kwargs=raw_kwargs,
     )

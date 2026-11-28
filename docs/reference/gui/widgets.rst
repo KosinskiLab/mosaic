@@ -21,16 +21,18 @@ Core Interface Components
    :toctree: ../rst/
 
    AxesWidget
-   BoundingBoxWidget
+   BoundingBoxManager
    ScaleBarWidget
    LegendWidget
 
 Volume and Time-series
 ~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: VolumeViewer
+
 .. autosummary::
    :toctree: ../rst/
 
-   MultiVolumeViewer
    TrajectoryPlayer
 
 Interaction Control
@@ -44,8 +46,10 @@ Interaction Control
 
 Ribbon Utilities
 ~~~~~~~~~~~~~~~~
+
+Use ``RibbonToolBar.add_section`` to group ribbon buttons.
+
 .. autosummary::
    :toctree: ../rst/
 
    create_button
-   create_section

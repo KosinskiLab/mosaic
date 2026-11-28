@@ -224,7 +224,7 @@ def patch_touched_loops(
 
     out_fs = fs.copy()
     n_orig = len(out_fs)
-    out_fs = _close_hole(vs, out_fs, np.asarray(best_loop, dtype=np.int64), fast=True)
+    out_fs = _close_hole(vs, out_fs, np.asarray(best_loop, dtype=np.int64))
     if len(out_fs) == n_orig:
         return None
 

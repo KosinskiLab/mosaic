@@ -157,6 +157,9 @@ class MosaicData:
         # so we only refresh the trees from the restored state.
         self.data.update(tree_state=self._session._data_tree)
         self.models.update(tree_state=self._session._models_tree)
+        # Default mode would overwrite colors saved with the session.
+        if self.viewport.coloring_mode == "entity":
+            self.viewport.set_coloring_mode("entity")
 
         meta_entry = self._session._file_sections.get("meta")
         meta = {}
@@ -182,7 +185,7 @@ class MosaicData:
         self._session._file_sections = {}
 
     def refresh_lod(self):
-        """Shortcut for :meth:`ViewportInteractor.refresh_lod`."""
+        """Shortcut for :meth:`~mosaic.viewport.ViewportInteractor.refresh_lod`."""
         return self.viewport.refresh_lod()
 
     def format_datalist(

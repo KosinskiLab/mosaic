@@ -29,7 +29,6 @@ Writing
    :toctree: rst
 
    write_geometries
-   write_density
 
 
 Session Files
