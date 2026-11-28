@@ -52,3 +52,15 @@ def test_transient_over_warning_stays_secondary_on_refresh(indicator):
     indicator.show_task("Saved as ", path="/d/a.mosaic")
     indicator._setup_status_bar_style()
     assert Colors.WARNING_TEXT not in indicator.task_label.styleSheet()
+
+
+def test_task_card_shortens_long_names(qapp):
+    from mosaic.widgets.status_indicator import TaskCard
+
+    name = "import_batch: PR8-TS10_10.00Apx_MemBrain_seg_v10_beta"
+    card = TaskCard({"id": "t", "name": name, "status": "running"})
+    assert card.name_label.text() == name[:29] + "..."
+    assert card.name_label.toolTip() == ""
+
+    card.update_task_data({"id": "t", "name": "Short", "status": "running"})
+    assert card.name_label.text() == "Short"

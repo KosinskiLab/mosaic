@@ -121,7 +121,8 @@ class TaskCard(QFrame):
         self.spinner.setVisible(False)
         row.addWidget(self.spinner)
 
-        self.name_label = QLabel(self.task_data.get("name", "Unnamed Task"))
+        self.name_label = QLabel()
+        self._set_name(self.task_data.get("name", "Unnamed Task"))
         row.addWidget(self.name_label, 1)
 
         self.message_label = QLabel()
@@ -257,10 +258,16 @@ class TaskCard(QFrame):
             painter.end()
         super().paintEvent(event)
 
+    def _set_name(self, name: str, limit: int = 32) -> None:
+        if len(name) > limit:
+            name = name[: limit - 3] + "..."
+        self.name_label.setText(name)
+        return None
+
     def update_task_data(self, task_data):
         self.task_data = task_data
         self.status = task_data.get("status", "running")
-        self.name_label.setText(task_data.get("name", "Unnamed Task"))
+        self._set_name(task_data.get("name", "Unnamed Task"))
         self._apply_status()
         if self.expanded:
             self._update_output()

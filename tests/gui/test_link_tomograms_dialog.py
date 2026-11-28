@@ -278,14 +278,12 @@ def test_cleared_folder_hides_all_statuses(qapp, dataset):
     assert dlg.footer.info_label.isHidden()
 
 
-def test_cleared_key_uses_auto_matcher(qapp, dataset):
+def test_cleared_key_matches_nothing(qapp, dataset):
     sessions, tomos = dataset
     dlg = LinkTomogramsDialog(sessions)
     dlg.set_folder(str(tomos))
-    dlg.set_key(r"TS_\d+_seg")
-    assert dlg.footer.info_label.text() == "3 to resolve"
     dlg.set_key("")
-    assert dlg.footer.info_label.text() == "1 to resolve"
+    assert dlg.footer.info_label.text() == f"{len(sessions)} to resolve"
 
 
 def _pick(dlg, session, text):

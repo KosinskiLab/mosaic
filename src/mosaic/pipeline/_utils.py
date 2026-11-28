@@ -6,7 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
-from os.path import basename
+from os.path import basename, splitext
 from re import split as re_split
 
 
@@ -24,7 +24,27 @@ def strip_filepath(path: str) -> str:
     str
         Filename without extension
     """
-    return basename(path).split(".")[0]
+    return strip_extension(basename(path))
+
+
+def strip_extension(name: str) -> str:
+    """
+    Remove the file extension, including the inner one of ``.gz`` files.
+
+    Parameters
+    ----------
+    name : str
+        File name or relative path.
+
+    Returns
+    -------
+    str
+        Name without its extension.
+    """
+    stem, ext = splitext(name)
+    if ext.lower() == ".gz":
+        stem = splitext(stem)[0]
+    return stem
 
 
 def natural_sort_key(path):

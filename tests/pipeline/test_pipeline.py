@@ -42,6 +42,12 @@ class TestStripFilepath:
         """Test with just filename."""
         assert strip_filepath("test.xyz") == "test"
 
+    def test_keeps_dots_before_the_extension(self):
+        assert strip_filepath("/d/TS_012.rec.mrc") == "TS_012.rec"
+        assert (
+            strip_filepath("/d/PR8-TS10_10.00Apx_seg.mrc.gz") == "PR8-TS10_10.00Apx_seg"
+        )
+
 
 class TestNaturalSortKey:
     """Tests for natural_sort_key utility function."""
@@ -633,6 +639,6 @@ class TestOperationCategories:
 
         for preset_name, preset_ops in PIPELINE_PRESETS.items():
             for op in preset_ops:
-                assert op["name"] in valid_ops, (
-                    f"Preset {preset_name} references invalid operation {op['name']}"
-                )
+                assert (
+                    op["name"] in valid_ops
+                ), f"Preset {preset_name} references invalid operation {op['name']}"
