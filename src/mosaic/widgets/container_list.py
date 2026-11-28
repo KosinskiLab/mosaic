@@ -248,7 +248,7 @@ class ContainerTreeWidget(QFrame):
         return None
 
     def _open_defect_menu(self, geometry: "Geometry", defects: list, rect: QRect):
-        menu = style_popup(QMenu(self))
+        menu = style_popup(QMenu(self.window()))
         if self.tree_widget.active_defect_geometry is geometry:
             menu.addAction("Hide").triggered.connect(self.defect_hidden.emit)
             menu.addSeparator()
