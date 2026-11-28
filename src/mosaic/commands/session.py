@@ -13,7 +13,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import os
 import warnings
 from collections.abc import Callable, Sequence
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import Future, ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -480,6 +481,8 @@ class Session:
     ):
         """Execute *func* on each geometry using a process pool.
 
+        Retry each job lost to a worker crash once in its own process pool.
+
         Parameters
         ----------
         func : callable
@@ -501,14 +504,16 @@ class Session:
         from ..parallel import _init_worker, _wrap_task
 
         workers = int(kwargs.pop("workers", 1))
-        pool = ProcessPoolExecutor(max_workers=workers, initializer=_init_worker)
-        futures = {
-            pool.submit(_wrap_task, func, None, g, **kwargs): i
-            for i, g in enumerate(geometries)
-        }
-
         results = [None] * len(geometries)
         errors = []
+        orphaned_indices = []
+
+        def record_result(idx: int, future: Future) -> None:
+            """Store a geometry result and forward its warnings."""
+            ret = future.result()
+            results[idx] = ret["result"]
+            if ret["warnings"]:
+                warnings.warn(f"#{idx}: {ret['warnings']}")
 
         from rich.progress import (
             BarColumn,
@@ -546,19 +551,45 @@ class Session:
         )
 
         with progress:
-            task = progress.add_task(operation_name, total=len(futures))
-            for future in as_completed(futures):
-                idx = futures[future]
+            task = progress.add_task(operation_name, total=len(geometries))
+            with ProcessPoolExecutor(
+                max_workers=workers, initializer=_init_worker
+            ) as pool:
+                futures = {}
+                for idx, geometry in enumerate(geometries):
+                    try:
+                        future = pool.submit(_wrap_task, func, None, geometry, **kwargs)
+                    except BrokenProcessPool:
+                        orphaned_indices.extend(range(idx, len(geometries)))
+                        break
+                    futures[future] = idx
+
+                for future in as_completed(futures):
+                    idx = futures[future]
+                    try:
+                        record_result(idx, future)
+                    except BrokenProcessPool:
+                        orphaned_indices.append(idx)
+                        continue
+                    except Exception as exc:
+                        errors.append((idx, exc))
+                    progress.advance(task)
+
+            for idx in sorted(orphaned_indices):
                 try:
-                    ret = future.result()
-                    results[idx] = ret["result"]
-                    if ret["warnings"]:
-                        warnings.warn(f"#{idx}: {ret['warnings']}")
+                    with ProcessPoolExecutor(
+                        max_workers=1, initializer=_init_worker
+                    ) as pool:
+                        future = pool.submit(
+                            _wrap_task, func, None, geometries[idx], **kwargs
+                        )
+                        record_result(idx, future)
+                except BrokenProcessPool:
+                    errors.append((idx, RuntimeError("Worker crashed.")))
                 except Exception as exc:
                     errors.append((idx, exc))
                 progress.advance(task)
 
-        pool.shutdown(wait=False)
         return results, errors
 
     def apply(self, operation_name: str, geometries: list, **kwargs) -> list:
