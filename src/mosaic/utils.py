@@ -331,7 +331,10 @@ def leiden_clustering(data: np.ndarray, resolution_parameter: float = -7.3, **kw
     edges = list(zip(sources, targets))
     g = ig.Graph(n=len(data), edges=edges)
     partitions = leidenalg.find_partition(
-        g, leidenalg.CPMVertexPartition, resolution_parameter=10**resolution_parameter
+        g,
+        leidenalg.CPMVertexPartition,
+        resolution_parameter=10**resolution_parameter,
+        seed=0,
     )
     labels = np.full(data.shape[0], fill_value=-1)
     for index, partition in enumerate(partitions):
@@ -418,7 +421,7 @@ def kmeans_clustering(data: np.ndarray, k: int = 2, **kwargs):
     """
     from sklearn.cluster import KMeans
 
-    return KMeans(n_clusters=k, n_init="auto").fit_predict(data)
+    return KMeans(n_clusters=k, n_init="auto", random_state=0).fit_predict(data)
 
 
 def eigenvalue_outlier_removal(
