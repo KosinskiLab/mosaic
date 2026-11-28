@@ -70,7 +70,10 @@ class SculptMode:
         """Install styles, shortcut filter, HUD signals, and bind to the first mesh."""
         renderer = self._vtk_widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
         self.controller.bind_renderer(
-            renderer, mesh_actor=None, render_callback=self._viewport.render_vtk
+            renderer,
+            mesh_actor=None,
+            render_callback=self._viewport.render_vtk,
+            topology_callback=self._viewport.render,
         )
         # Undo/redo resolves its target by uuid against the live container, so a
         # sculpt undo lands on the mesh currently shown (e.g. a copy restored by

@@ -127,6 +127,7 @@ class SculptController:
         self._picker: vtk.vtkCellPicker | None = None
         self._overlay: SculptOverlay | None = None
         self._render_callback = None
+        self._topology_callback = None
 
         # Resolves a geometry uuid to the object currently holding it, mirroring
         # ``container.get(uuid)``. Undo/redo closures resolve their target this
@@ -189,6 +190,7 @@ class SculptController:
         renderer: vtk.vtkRenderer,
         mesh_actor: vtk.vtkActor | None = None,
         render_callback: Callable[[], object] | None = None,
+        topology_callback: Callable[[], object] | None = None,
     ) -> None:
         if self._overlay is not None and self._renderer is not None:
             self._overlay.detach(self._renderer)
@@ -196,6 +198,7 @@ class SculptController:
         self._renderer = renderer
         self._mesh_actor = mesh_actor
         self._render_callback = render_callback
+        self._topology_callback = topology_callback
         self._picker = vtk.vtkCellPicker()
         self._picker.SetTolerance(0.001)
         self._overlay = SculptOverlay()
@@ -230,6 +233,7 @@ class SculptController:
         self._mesh_actor = None
         self._picker = None
         self._render_callback = None
+        self._topology_callback = None
 
     def _apply_tint(self, indices: np.ndarray) -> None:
         """Color ``indices`` with the active tool's tint, on the source mesh."""
@@ -444,6 +448,8 @@ class SculptController:
         swap_geometry_topology(geometry, target.vs, target.fs)
         self._writer = PolyDataPointWriter(geometry._data)
         self._push_patch_undo(geometry, record)
+        if self._topology_callback is not None:
+            self._topology_callback()
         return None
 
     def _update_hover(self, x: int, y: int) -> None:
@@ -651,7 +657,7 @@ class SculptController:
         uuid = getattr(geometry, "uuid", None)
         # Capture the render trigger now; see _push_stroke_undo for why the
         # controller's live callback is unreliable once sculpt mode is gone.
-        render = self._render_callback
+        render = self._topology_callback or self._render_callback
 
         def swap(vs: np.ndarray, fs: np.ndarray):
             geom = self._resolve_live(uuid)

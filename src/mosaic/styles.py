@@ -296,6 +296,7 @@ class MeshEditInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             meta=geometry._meta.copy(),
             model=mesh,
         )
+        self.models_pane.render(defer_render=True)
         return self.cleanup()
 
     def on_key_press(self, obj: vtk.vtkInteractorStyle, event: str):

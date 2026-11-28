@@ -630,6 +630,7 @@ class App(QMainWindow):
 
     def _show_defect(self, geometry: "Geometry", defect: "MeshDefect"):
         model = geometry.model
+        self._defect_source = (geometry, model)
         self.defect_highlight.show(model.vertices, model.triangles, defect)
         for interactor in (self.cdata.data, self.cdata.models):
             interactor.data_list.set_active_defect(geometry)
@@ -638,6 +639,19 @@ class App(QMainWindow):
     def _hide_defect(self):
         self.defect_highlight.hide()
         self._refresh_defects()
+
+    def _drop_stale_defect(self):
+        if self.defect_highlight.defect is None:
+            return None
+        geometry, model = self._defect_source
+        panes = (self.cdata.data, self.cdata.models)
+        present = any(g is geometry for p in panes for g in p.container.data)
+        if present and geometry.model is model:
+            return None
+        self.defect_highlight.hide()
+        for interactor in panes:
+            interactor.data_list.set_active_defect(None)
+        return None
 
     def _refresh_defects(self):
         for interactor in (self.cdata.data, self.cdata.models):
@@ -1128,6 +1142,7 @@ class App(QMainWindow):
         for interactor in (self.cdata.data, self.cdata.models):
             interactor.data_list.defect_requested.connect(self._show_defect)
             interactor.data_list.defect_hidden.connect(self._hide_defect)
+        self.cdata.viewport.vtk_pre_render.connect(self._drop_stale_defect)
         preference_menu.addMenu(
             build_mesh_check_menu(self, self.defect_highlight, self._refresh_defects)
         )

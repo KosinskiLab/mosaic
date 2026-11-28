@@ -40,8 +40,8 @@ def all_kinds_shown():
 
 def _press_icon(widget, row):
     tree = widget.tree_widget
-    rect = container_list._defect_icon_rect(tree.visualItemRect(tree.topLevelItem(row)))
-    pos = QPointF(rect.center())
+    rect = tree.visualItemRect(tree.topLevelItem(row))
+    pos = QPointF(rect.left() + 16, rect.center().y())
     event = QMouseEvent(
         QEvent.Type.MouseButtonPress,
         pos,
@@ -140,3 +140,50 @@ def test_ticking_again_restores_without_rechecking(qapp, all_kinds_shown, monkey
     holes.trigger()
     holes.trigger()
     assert shown_defects(model) == expected
+
+
+def test_deleting_a_triangle_repaints_the_list(qapp, all_kinds_shown):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from qtpy.QtCore import QObject
+
+    from mosaic.commands.session import Session
+    from mosaic.interactor import DataContainerInteractor
+    from mosaic.styles import MeshEditInteractorStyle
+
+    pane = DataContainerInteractor(Session(quiet=True), role="models")
+    viewport = Mock()
+    viewport.render.side_effect = lambda **kwargs: pane.data_list.update(
+        pane._uuid_to_items()
+    )
+    pane.attach_viewport(viewport)
+    vs, fs = _sphere()
+    geometry = Geometry(points=vs, model=TriangularMesh(to_open3d(vs, fs)))
+    geometry.change_representation("mesh")
+    pane.add(geometry)
+    pane.render()
+    pane.data_list.resize(260, 200)
+    pane.data_list.show()
+    qapp.processEvents()
+
+    class Paints(QObject):
+        count = 0
+
+        def eventFilter(self, obj, event):
+            self.count += event.type() == QEvent.Type.Paint
+            return False
+
+    paints = Paints()
+    pane.data_list.tree_widget.viewport().installEventFilter(paints)
+    geometry = pane.container.data[0]
+    face = geometry._data.GetVerts().GetNumberOfCells() + 5
+    style = SimpleNamespace(
+        selected_faces=[{"geometry": geometry, "cell_id": face}],
+        models_pane=pane,
+        cleanup=lambda: None,
+    )
+    MeshEditInteractorStyle.remove_selected(style)
+    qapp.processEvents()
+    assert shown_defects(geometry.model)
+    assert paints.count > 0

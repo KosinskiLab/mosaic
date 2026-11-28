@@ -817,16 +817,6 @@ def _defect_label(defect: "MeshDefect") -> str:
     return "Non-manifold edge"
 
 
-def _defect_icon_rect(row_rect: QRect) -> QRect:
-    size = 16
-    return QRect(
-        row_rect.right() - size - 10,
-        row_rect.top() + (row_rect.height() - size) // 2,
-        size,
-        size,
-    )
-
-
 class _DefectIconClicks(QObject):
     """Opens the defect menu when the attention icon of a row is pressed."""
 
@@ -844,7 +834,9 @@ class _DefectIconClicks(QObject):
         if geometry is None:
             return False
         defects = shown_defects(geometry.model)
-        rect = _defect_icon_rect(tree.visualItemRect(item))
+        rect = tree.itemDelegate().icon_rect(
+            tree.visualItemRect(item), tree.indexFromItem(item)
+        )
         if not defects or not rect.adjusted(-4, -4, 4, 4).contains(pos):
             return False
         self.container._open_defect_menu(geometry, defects, rect)
@@ -874,6 +866,16 @@ class MetadataItemDelegate(QStyledItemDelegate):
 
     def _indent_for(self, index: QModelIndex):
         return self._child_indent if index.parent().isValid() else 0
+
+    def icon_rect(self, rect: QRect, index: QModelIndex) -> QRect:
+        """Rectangle of the leading icon within a row."""
+        size = self._icon_size_for(self.parent().itemFromIndex(index))
+        return QRect(
+            rect.left() + self._pad + self._indent_for(index),
+            rect.top() + (rect.height() - size) // 2,
+            size,
+            size,
+        )
 
     def updateEditorGeometry(
         self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex
@@ -925,15 +927,15 @@ class MetadataItemDelegate(QStyledItemDelegate):
 
         icon_size = self._icon_size_for(item)
         icon = index.data(Qt.ItemDataRole.DecorationRole)
+        geometry = getattr(item, "_geometry", None)
+        if geometry is not None and shown_defects(geometry.model):
+            name = "ph.warning-circle"
+            if getattr(tree_widget, "active_defect_geometry", None) is geometry:
+                name = "ph.warning-circle-fill"
+            icon = _icon_factory(name, color=Colors.WARNING)
         has_icon = icon and not icon.isNull()
         if has_icon:
-            icon_rect = QRect(
-                option.rect.left() + pad + indent,
-                option.rect.top() + (option.rect.height() - icon_size) // 2,
-                icon_size,
-                icon_size,
-            )
-            icon.paint(painter, icon_rect)
+            icon.paint(painter, self.icon_rect(option.rect, index))
 
         painter.save()
         painter.setFont(option.font)
@@ -955,15 +957,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
         )
         painter.drawText(text_rect, int(Qt.AlignmentFlag.AlignVCenter), text)
         painter.restore()
-
-        geometry = getattr(item, "_geometry", None)
-        if geometry is not None and shown_defects(geometry.model):
-            name = "ph.warning-circle"
-            if getattr(tree_widget, "active_defect_geometry", None) is geometry:
-                name = "ph.warning-circle-fill"
-            _icon_factory(name, color=Colors.WARNING).paint(
-                painter, _defect_icon_rect(option.rect)
-            )
 
 
 class _SessionHeader(QWidget):

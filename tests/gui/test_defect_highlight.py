@@ -62,3 +62,59 @@ def test_camera_backs_off_from_a_hole_in_the_middle_of_a_sheet():
     camera = renderer.GetActiveCamera()
     offset = np.subtract(camera.GetPosition(), camera.GetFocalPoint())
     assert np.linalg.norm(offset) > 1
+
+
+def _app_with_highlight(qapp):
+    from types import SimpleNamespace
+
+    from mosaic.geometry import Geometry
+    from mosaic.meshing.utils import to_open3d
+    from mosaic.parametrization import TriangularMesh
+
+    vs, fs, defect = _holed_sphere()
+    model = TriangularMesh(to_open3d(vs, fs), repair=False)
+    geometry = Geometry(points=vs, model=model)
+    highlight = DefectHighlight(vtk.vtkRenderer())
+    highlight.show(vs, fs, defect)
+
+    def pane(data):
+        return SimpleNamespace(
+            container=SimpleNamespace(data=data),
+            data_list=SimpleNamespace(set_active_defect=lambda geometry: None),
+        )
+
+    app = SimpleNamespace(
+        defect_highlight=highlight,
+        _defect_source=(geometry, model),
+        cdata=SimpleNamespace(data=pane([]), models=pane([geometry])),
+    )
+    return app, geometry
+
+
+def test_highlight_stays_while_its_mesh_is_unchanged(qapp):
+    from mosaic.gui import App
+
+    app, _ = _app_with_highlight(qapp)
+    App._drop_stale_defect(app)
+    assert app.defect_highlight.defect is not None
+
+
+def test_highlight_goes_with_its_removed_mesh(qapp):
+    from mosaic.gui import App
+
+    app, _ = _app_with_highlight(qapp)
+    app.cdata.models.container.data.clear()
+    App._drop_stale_defect(app)
+    assert app.defect_highlight.defect is None
+
+
+def test_highlight_goes_when_its_mesh_is_replaced(qapp):
+    from mosaic.gui import App
+    from mosaic.meshing.utils import to_open3d
+    from mosaic.parametrization import TriangularMesh
+
+    app, geometry = _app_with_highlight(qapp)
+    vs, fs, _ = _holed_sphere()
+    geometry.swap_data(points=vs, faces=fs, model=TriangularMesh(to_open3d(vs, fs)))
+    App._drop_stale_defect(app)
+    assert app.defect_highlight.defect is None
