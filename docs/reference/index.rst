@@ -10,6 +10,7 @@ API
    data_structures/session
    data_structures/data
    data_structures/interactor
+   data_structures/viewport
 
 .. toctree::
    :caption: Processing

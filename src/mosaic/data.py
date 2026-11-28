@@ -185,7 +185,7 @@ class MosaicData:
         self._session._file_sections = {}
 
     def refresh_lod(self):
-        """Shortcut for :meth:`ViewportInteractor.refresh_lod`."""
+        """Shortcut for :meth:`~mosaic.viewport.ViewportInteractor.refresh_lod`."""
         return self.viewport.refresh_lod()
 
     def format_datalist(

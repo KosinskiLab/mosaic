@@ -4,17 +4,6 @@ import sys
 sys.path.insert(0, os.path.abspath("../mosaic"))
 from mosaic import __version__
 
-autodoc_mock_imports = [
-    "qtpy",
-    "qtpy.QtGui",
-    "qtpy.QtCore",
-    "qtpy.QtWidgets",
-    "PyQt6",
-    "PyQt6.QtGui",
-    "PyQt6.QtCore",
-    "PyQt6.QtWidgets",
-]
-
 project = "mosaic"
 copyright = "2024-2025, European Molecular Biology Laboratory"
 author = "Valentin J. Maurer"
