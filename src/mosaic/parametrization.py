@@ -882,6 +882,15 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_unreferenced_vertices()
             self.mesh.remove_duplicated_vertices()
 
+            import open3d as o3d
+
+            faces = np.asarray(self.mesh.triangles)
+            oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
+            if not np.array_equal(oriented, faces):
+                self.mesh.triangles = o3d.utility.Vector3iVector(oriented)
+                if self.mesh.has_vertex_normals():
+                    self.mesh.compute_vertex_normals()
+
     def to_file(self, file_path: str | PathLike[str]):
         from os.path import splitext
 
@@ -1451,10 +1460,7 @@ class BallPivoting(TriangularMesh):
                 pressure=pressure,
                 n_ring=boundary_ring,
             )
-        mesh = _drop_small_pieces(meshing.to_open3d(new_vs, new_fs))
-        new_vs = np.asarray(mesh.vertices)
-        new_fs = _orient_closed_outward(new_vs, np.asarray(mesh.triangles))
-        return cls(mesh=meshing.to_open3d(new_vs, new_fs))
+        return cls(mesh=_drop_small_pieces(meshing.to_open3d(new_vs, new_fs)))
 
 
 class PoissonMesh(TriangularMesh):

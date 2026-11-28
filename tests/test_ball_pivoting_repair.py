@@ -65,3 +65,16 @@ def test_turns_single_reversed_faces_to_match_their_surface():
     oriented = _orient_closed_outward(vs, fs)
     assert _orientation_conflicts(oriented) == 0
     assert _signed_volume(vs, oriented) > 0
+
+
+def test_triangular_mesh_faces_closed_surfaces_outward():
+    from mosaic.parametrization import TriangularMesh
+
+    vs, fs = _sphere()
+    inside_out = to_open3d(vs, fs[:, ::-1].copy())
+    inside_out.compute_vertex_normals()
+    model = TriangularMesh(inside_out)
+    v, f = np.asarray(model.vertices), np.asarray(model.triangles)
+    assert _signed_volume(v, f) > 0
+    normals = np.asarray(model.mesh.vertex_normals)
+    assert (np.einsum("ij,ij->i", normals, v) > 0).all()
