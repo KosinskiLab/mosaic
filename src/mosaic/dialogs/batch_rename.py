@@ -15,37 +15,99 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QStackedWidget,
     QVBoxLayout,
-    QWidget,
 )
 
 from ..stylesheets import Colors, Typography
 from ..widgets import DialogFooter
 
+__all__ = ["BatchRenameDialog", "rename"]
 
-class BatchRenameDialog(QDialog):
-    """Dialog for batch renaming with Replace Text and Format modes.
+_TOKEN = re.compile(r"\{name\}|\{i(?::(\d{1,3}))?\}")
 
-    Modes
-    -----
-    Replace Text
-        Find and replace within names. Supports plain text (default) and
-        optional regular expressions for power users.
-    Format
-        Pattern template with ``{name}`` (original name), ``{i}`` (sequential
-        index), and ``{i:03}`` (zero-padded index) tokens.
+
+def _expand(template: str, name: str, index: int, match=None) -> str:
+    parts, pos = [], 0
+    for token in _TOKEN.finditer(template):
+        literal = template[pos : token.start()]
+        parts.append(match.expand(literal) if match else literal)
+        if token.group(0) == "{name}":
+            parts.append(name)
+        else:
+            parts.append(str(index).zfill(int(token.group(1) or 0)))
+        pos = token.end()
+    literal = template[pos:]
+    parts.append(match.expand(literal) if match else literal)
+    return "".join(parts)
+
+
+def rename(
+    names: list[str],
+    find: str,
+    replace: str,
+    regex: bool = False,
+    case_sensitive: bool = True,
+) -> list[str]:
+    """Rename names by replacing ``find`` with ``replace``.
+
+    ``replace`` may contain ``{name}`` (original name), ``{i}`` (1-based
+    number) and ``{i:03}`` (zero-padded number). An empty ``find`` matches
+    the whole name.
 
     Parameters
     ----------
-    names : List[str]
+    names : list of str
+        Names in display order.
+    find : str
+        Text or regular expression to replace. Empty replaces the whole name.
+    replace : str
+        Replacement text with optional tokens. With ``regex``, group
+        references such as ``\\1`` are expanded too.
+    regex : bool, optional
+        Treat ``find`` as a regular expression, by default False.
+    case_sensitive : bool, optional
+        Match case, by default True.
+
+    Returns
+    -------
+    list of str
+        New names, unchanged when both ``find`` and ``replace`` are empty.
+
+    Raises
+    ------
+    re.error
+        If ``find`` is an invalid regular expression.
+    """
+    if not find and not replace:
+        return list(names)
+
+    flags = 0 if case_sensitive else re.IGNORECASE
+    pattern = find if regex else re.escape(find)
+    compiled = re.compile(pattern or r"^.*$", flags)
+
+    result = []
+    for index, name in enumerate(names, start=1):
+        if regex:
+            new = compiled.sub(
+                lambda m, n=name, i=index: _expand(replace, n, i, m), name
+            )
+        else:
+            text = _expand(replace, name, index)
+            new = compiled.sub(lambda _, t=text: t, name)
+        result.append(new)
+    return result
+
+
+class BatchRenameDialog(QDialog):
+    """Dialog for batch renaming with find and replace.
+
+    Parameters
+    ----------
+    names : list of str
         Current names of items in tree order.
     parent : QWidget, optional
         Parent widget.
     """
-
-    MODES = ["Replace", "Format"]
 
     def __init__(self, names: list[str], parent=None):
         super().__init__(parent)
@@ -64,95 +126,28 @@ class BatchRenameDialog(QDialog):
         main_layout.setContentsMargins(20, 20, 20, 10)
         main_layout.setSpacing(0)
 
-        # Mode tabs as segmented control
-        tab_row = QHBoxLayout()
-        tab_row.setSpacing(0)
-        self.mode_buttons = []
-        tab_container = QWidget()
-        tab_layout = QHBoxLayout(tab_container)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        tab_layout.setSpacing(0)
-        for i, mode in enumerate(self.MODES):
-            btn = QPushButton(mode)
-            btn.setCheckable(True)
-            btn.setChecked(i == 0)
-            radius_l = "4px" if i == 0 else "0px"
-            radius_r = "4px" if i == len(self.MODES) - 1 else "0px"
-            margin_l = "0px" if i == 0 else "-1px"
-            btn.setStyleSheet(
-                f"""
-                QPushButton {{
-                    border: 1px solid {Colors.BORDER_DARK};
-                    border-radius: 0px;
-                    border-top-left-radius: {radius_l};
-                    border-bottom-left-radius: {radius_l};
-                    border-top-right-radius: {radius_r};
-                    border-bottom-right-radius: {radius_r};
-                    padding: 5px 18px;
-                    font-size: {Typography.LABEL}px;
-                    color: {Colors.TEXT_SECONDARY};
-                    background: transparent;
-                    margin-left: {margin_l};
-                }}
-                QPushButton:checked {{
-                    background: {Colors.BG_TERTIARY};
-                    color: {Colors.TEXT_PRIMARY};
-                    font-weight: 500;
-                }}
-                QPushButton:hover:!checked {{
-                    background: {Colors.BG_HOVER};
-                }}
-            """
-            )
-            btn.clicked.connect(lambda checked, idx=i: self._on_mode_clicked(idx))
-            tab_layout.addWidget(btn)
-            self.mode_buttons.append(btn)
-
-        tab_row.addWidget(tab_container)
-        tab_row.addStretch()
-        main_layout.addLayout(tab_row)
-        main_layout.addSpacing(14)
-
-        # Stacked options (no group box)
-        self.stack = QStackedWidget()
-        self._build_replace_page()
-        self._build_format_page()
-        main_layout.addWidget(self.stack)
-        main_layout.addSpacing(10)
-
-        self.preview_label = QLabel()
-        self.preview_label.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
+        label_style = (
+            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
         )
-        main_layout.addWidget(self.preview_label)
-        main_layout.addSpacing(8)
-
-        footer = DialogFooter(dialog=self, margin=(0, 4, 0, 0))
-        footer.accept_button.setText("Rename")
-        main_layout.addWidget(footer)
-
-    def _build_replace_page(self):
-        page = QWidget()
-        grid = QGridLayout(page)
+        grid = QGridLayout()
         grid.setSpacing(10)
         grid.setContentsMargins(0, 0, 0, 0)
 
         find_label = QLabel("Find")
-        find_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
-        )
+        find_label.setStyleSheet(label_style)
         grid.addWidget(find_label, 0, 0)
         self.find_input = QLineEdit()
-        self.find_input.setPlaceholderText("Text to find")
+        self.find_input.setPlaceholderText("Text to find, empty for the whole name")
         grid.addWidget(self.find_input, 0, 1)
 
         replace_label = QLabel("Replace")
-        replace_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
-        )
+        replace_label.setStyleSheet(label_style)
         grid.addWidget(replace_label, 1, 0)
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replacement (leave empty to delete)")
+        self.replace_input.setToolTip(
+            "{name} = original name · {i} = number · {i:03} = zero-padded number"
+        )
         grid.addWidget(self.replace_input, 1, 1)
 
         self.error_label = QLabel()
@@ -170,100 +165,50 @@ class BatchRenameDialog(QDialog):
         self.regex_check = QCheckBox("Regular expression")
         options_row.addWidget(self.regex_check)
         options_row.addStretch()
-
         grid.addLayout(options_row, 3, 1)
 
-        self.stack.addWidget(page)
+        main_layout.addLayout(grid)
+        main_layout.addSpacing(10)
 
-    def _build_format_page(self):
-        page = QWidget()
-        grid = QGridLayout(page)
-        grid.setSpacing(10)
-        grid.setContentsMargins(0, 0, 0, 0)
-
-        template_label = QLabel("Template")
-        template_label.setStyleSheet(
-            f"color: {Colors.TEXT_SECONDARY}; font-size: {Typography.LABEL}px;"
+        self.preview_label = QLabel()
+        self.preview_label.setStyleSheet(
+            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.SMALL}px;"
         )
-        grid.addWidget(template_label, 0, 0)
-        self.pattern_input = QLineEdit()
-        self.pattern_input.setPlaceholderText("e.g. Mitochondrion {i}")
-        self.pattern_input.setText("{name}")
-        self.pattern_input.selectAll()
-        grid.addWidget(self.pattern_input, 0, 1)
+        main_layout.addWidget(self.preview_label)
+        main_layout.addSpacing(8)
 
-        token_help = QLabel("{name} = original · {i} = number · {i:03} = zero-padded")
-        token_help.setStyleSheet(
-            f"color: {Colors.TEXT_MUTED}; font-size: {Typography.CAPTION}px;"
-        )
-        grid.addWidget(token_help, 1, 1)
-
-        self.stack.addWidget(page)
+        footer = DialogFooter(dialog=self, margin=(0, 4, 0, 0))
+        footer.accept_button.setText("Rename")
+        main_layout.addWidget(footer)
+        return None
 
     def _connect_signals(self):
         self.find_input.textChanged.connect(self._update_result)
         self.replace_input.textChanged.connect(self._update_result)
         self.case_sensitive_check.stateChanged.connect(self._update_result)
         self.regex_check.stateChanged.connect(self._update_result)
-        self.pattern_input.textChanged.connect(self._update_result)
-
-    def _on_mode_clicked(self, index):
-        for i, btn in enumerate(self.mode_buttons):
-            btn.setChecked(i == index)
-        self.stack.setCurrentIndex(index)
-        self._update_result()
-
-    def _compute_names(self):
-        if self.stack.currentIndex() == 0:
-            return self._apply_replace()
-        return self._apply_format()
-
-    def _apply_replace(self):
-        find = self.find_input.text()
-        replace = self.replace_input.text()
-        if not find:
-            return list(self.names)
-
-        use_regex = self.regex_check.isChecked()
-        case_sensitive = self.case_sensitive_check.isChecked()
-        flags = 0 if case_sensitive else re.IGNORECASE
-
-        result = []
-        for name in self.names:
-            try:
-                if use_regex:
-                    new_name = re.sub(find, replace, name, flags=flags)
-                else:
-                    new_name = re.sub(re.escape(find), replace, name, flags=flags)
-                self.error_label.hide()
-            except re.error as e:
-                self.error_label.setText(f"Invalid pattern: {e}")
-                self.error_label.show()
-                return list(self.names)
-            result.append(new_name)
-        return result
-
-    def _apply_format(self):
-        pattern = self.pattern_input.text()
-
-        result = []
-        for idx, name in enumerate(self.names):
-            text = pattern
-            text = re.sub(
-                r"\{i:(\d+)\}",
-                lambda m: str(idx + 1).zfill(int(m.group(1))),
-                text,
-            )
-            text = text.replace("{i}", str(idx + 1))
-            text = text.replace("{name}", name)
-            result.append(text)
-        return result
+        return None
 
     def _update_result(self):
-        self.result_names = self._compute_names()
-        if self.names[0] != self.result_names[0]:
+        try:
+            self.result_names = rename(
+                self.names,
+                self.find_input.text(),
+                self.replace_input.text(),
+                regex=self.regex_check.isChecked(),
+                case_sensitive=self.case_sensitive_check.isChecked(),
+            )
+            self.error_label.hide()
+        except re.error as e:
+            self.error_label.setText(f"Invalid pattern: {e}")
+            self.error_label.show()
+            self.result_names = list(self.names)
+
+        edited = self.find_input.text() or self.replace_input.text()
+        if edited and self.error_label.isHidden():
             self.preview_label.setText(
                 f"Example: {self.names[0]}  →  {self.result_names[0]}"
             )
         else:
             self.preview_label.setText("")
+        return None
