@@ -480,7 +480,7 @@ def points_from_flat_array(arr: np.ndarray, dims: tuple, max_cluster: int = 1000
     NotASegmentationError
         If the sampled unique-value count exceeds ``max_cluster``.
     """
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(0)
     sample = arr[rng.integers(0, arr.size, size=min(125_000, arr.size))]
     unique_count = len(np.unique(sample))
     if unique_count > max_cluster:

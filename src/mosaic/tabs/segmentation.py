@@ -206,7 +206,7 @@ class SegmentationTab(QWidget):
         task_name = op_name.title()
         for geometry in self.cdata.data.get_selected_geometries():
             submit_task(
-                task_name,
+                f"{task_name} {geometry._meta.get('name', '')}".rstrip(),
                 func,
                 _make_callback(geometry),
                 geometry._geometry_data,

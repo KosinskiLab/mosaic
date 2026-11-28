@@ -36,7 +36,7 @@ def is_likely_density_map(filepath: str, max_cluster: int = 10000) -> bool:
         volume = load_density(filepath, use_memmap=False)
         data = volume.data.ravel()
 
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(0)
     sample = data[rng.integers(0, data.size, size=min(125_000, data.size))]
     return len(np.unique(sample)) > max_cluster
 

@@ -15,6 +15,7 @@ import threading
 import uuid
 import warnings
 from collections.abc import Callable, Iterable, Sequence
+from contextlib import ExitStack
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -23,6 +24,7 @@ from warnings import WarningMessage
 from qtpy.QtCore import QObject, QTimer, Signal
 
 from .settings import Settings
+from .watchdog import MemoryWatchdog
 
 __all__ = [
     "_init_worker",
@@ -284,7 +286,7 @@ def _flush_messages():
 
         if len(items) == 1:
             name, msg = items[0]
-            text = f"{name.replace('_', ' ').title()} "
+            text = f"{name} "
             text += "completed with warnings" if is_warning else "failed"
             first_line = (msg.strip().splitlines()[0][:300] if msg else "") or ""
             detail = msg or ""
@@ -343,6 +345,7 @@ class BackgroundTaskManager(QObject):
         self.task_info: dict[str, dict[str, Any]] = {}
         self.futures: dict[str, concurrent.futures.Future] = {}
         self.io_futures: dict[str, concurrent.futures.Future] = {}
+        self._executor_context = ExitStack()
 
         # Batch limits
         self.batch_limits: dict[str, int] = {}
@@ -419,6 +422,7 @@ class BackgroundTaskManager(QObject):
             max_workers=4,
             thread_name_prefix="mosaic-io",
         )
+        self._watchdog = self._executor_context.enter_context(MemoryWatchdog())
 
         self.running_tasks.emit(len(self.futures) + len(self.io_futures))
 
@@ -446,6 +450,7 @@ class BackgroundTaskManager(QObject):
             self.executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
             pass
+        self._executor_context.close()
 
         try:
             self.io_executor.shutdown(wait=False, cancel_futures=True)
@@ -742,6 +747,8 @@ class BackgroundTaskManager(QObject):
 
             except concurrent.futures.process.BrokenProcessPool as e:
                 error_msg = f"Worker process died unexpectedly: {str(e)}"
+                if self._watchdog.tripped:
+                    error_msg = "Stopped: worker memory exceeded 80% of physical memory"
                 self.task_failed.emit(task_id, task_name, error_msg)
                 executor_broken = True
 

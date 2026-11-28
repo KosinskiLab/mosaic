@@ -276,7 +276,8 @@ def downsample(
     elif method == "number":
         size = kwargs.get("size", 1000)
         size = min(size, points.shape[0])
-        keep = np.random.choice(range(points.shape[0]), replace=False, size=size)
+        rng = np.random.default_rng(0)
+        keep = rng.choice(points.shape[0], replace=False, size=size)
         points = points[keep]
         normals = normals[keep] if normals is not None else None
     elif method in ("center_of_mass", "center of mass"):
@@ -1329,7 +1330,7 @@ def fit(geometry: "Geometry | GeometryData", method: str, **kwargs):
         If method is unsupported or point count is insufficient (<50).
     """
     from .geometry import GeometryData
-    from .parametrization import PARAMETRIZATION_TYPE
+    from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
     method = MethodRegistry.resolve_method("fit", method)
 
@@ -1366,6 +1367,8 @@ def fit(geometry: "Geometry | GeometryData", method: str, **kwargs):
             kwargs.setdefault("normals", geom_normals)
 
     fit = fit_object.fit(geometry.points, **kwargs)
+    if isinstance(fit, TriangularMesh):
+        fit.orient_outward()
     if hasattr(fit, "mesh"):
         new_points = fit.vertices
         normals = fit.compute_vertex_normals()

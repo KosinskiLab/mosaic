@@ -10,7 +10,12 @@ import pickle
 import numpy as np
 import pytest
 
-from mosaic.parametrization import PARAMETRIZATION_TYPE, BallPivoting
+from mosaic.parametrization import (
+    PARAMETRIZATION_TYPE,
+    BallPivoting,
+    ShrinkWrap,
+    TriangularMesh,
+)
 
 PARAMETRIZATION_CONFIG = [
     ("Sphere", "sphere", {}),
@@ -78,6 +83,33 @@ def generate_random_points(n_points=100, shape="sphere", noise=0.1):
 @pytest.fixture
 def mesh_points():
     return generate_random_points(100, "sphere")
+
+
+def test_shrink_wrap_hull_sampling_is_reproducible(mesh_points, monkeypatch):
+    import gpytoolbox
+
+    flow_inputs = []
+
+    def capture_flow_input(U, V, F, **kwargs):
+        flow_inputs.append(U.copy())
+        return V, F
+
+    monkeypatch.setattr(gpytoolbox, "reach_for_the_spheres", capture_flow_input)
+    ShrinkWrap.fit(mesh_points, normals=mesh_points, bridge_gaps=True)
+    ShrinkWrap.fit(mesh_points, normals=mesh_points, bridge_gaps=True)
+    first, second = flow_inputs
+    assert len(first) > len(mesh_points)
+    np.testing.assert_array_equal(first, second)
+
+
+@pytest.mark.parametrize("mesh_init_factor", [None, 5], ids=["uniform", "poisson_disk"])
+def test_mesh_sampling_is_reproducible(mesh_init_factor):
+    import open3d as o3d
+
+    mesh = TriangularMesh(o3d.geometry.TriangleMesh.create_box())
+    first = mesh.sample(64, mesh_init_factor=mesh_init_factor)
+    second = mesh.sample(64, mesh_init_factor=mesh_init_factor)
+    np.testing.assert_array_equal(first, second)
 
 
 @pytest.fixture(scope="module", params=BASE_CONFIG, ids=lambda x: x[0])

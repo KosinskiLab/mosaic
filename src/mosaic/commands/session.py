@@ -13,7 +13,8 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 import os
 import warnings
 from collections.abc import Callable, Sequence
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import Future, ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from ..geometry import Geometry
     from ..swaps import GeometrySubset, GeometrySwap
 
-__all__ = ["Session"]
+__all__ = ["Session", "StepFailed"]
 
 
 class _SessionTarget:
@@ -57,6 +58,24 @@ class _SessionTarget:
         return None
 
 
+class StepFailed(RuntimeError):
+    """An operation failed on one or more geometries in a strict session.
+
+    Parameters
+    ----------
+    step : str
+        Name of the operation.
+    failures : list of tuple of str
+        Geometry name and reason for each failed geometry.
+    """
+
+    def __init__(self, step: str, failures: list[tuple[str, str]]):
+        self.step = step
+        self.failures = failures
+        details = "; ".join(f"{name}: {reason}" for name, reason in failures)
+        super().__init__(f"{step} failed for {details}")
+
+
 class Session:
     """Headless workspace that holds geometry data and dispatches operations.
 
@@ -68,7 +87,7 @@ class Session:
         Container for fitted mesh/model geometries.
     """
 
-    def __init__(self, quiet: bool = False):
+    def __init__(self, quiet: bool = False, strict: bool = False):
         self._data = DataContainer()
         self._models = DataContainer(highlight_color=(0.2, 0.4, 0.8))
         self._data_tree = TreeStateData()
@@ -80,6 +99,7 @@ class Session:
         self._counter: int = 0
         self.metadata: dict = {}
         self.quiet: bool = quiet
+        self.strict: bool = strict
 
     def _update_shape(self, data_shape: ArrayLike, sampling: ArrayLike) -> None:
         """Extend the session bounding box to include *data_shape*."""
@@ -480,6 +500,8 @@ class Session:
     ):
         """Execute *func* on each geometry using a process pool.
 
+        Retry each job lost to a worker crash once in its own process pool.
+
         Parameters
         ----------
         func : callable
@@ -501,14 +523,16 @@ class Session:
         from ..parallel import _init_worker, _wrap_task
 
         workers = int(kwargs.pop("workers", 1))
-        pool = ProcessPoolExecutor(max_workers=workers, initializer=_init_worker)
-        futures = {
-            pool.submit(_wrap_task, func, None, g, **kwargs): i
-            for i, g in enumerate(geometries)
-        }
-
         results = [None] * len(geometries)
         errors = []
+        orphaned_indices = []
+
+        def record_result(idx: int, future: Future) -> None:
+            """Store a geometry result and forward its warnings."""
+            ret = future.result()
+            results[idx] = ret["result"]
+            if ret["warnings"]:
+                warnings.warn(f"#{idx}: {ret['warnings']}")
 
         from rich.progress import (
             BarColumn,
@@ -546,19 +570,45 @@ class Session:
         )
 
         with progress:
-            task = progress.add_task(operation_name, total=len(futures))
-            for future in as_completed(futures):
-                idx = futures[future]
+            task = progress.add_task(operation_name, total=len(geometries))
+            with ProcessPoolExecutor(
+                max_workers=workers, initializer=_init_worker
+            ) as pool:
+                futures = {}
+                for idx, geometry in enumerate(geometries):
+                    try:
+                        future = pool.submit(_wrap_task, func, None, geometry, **kwargs)
+                    except BrokenProcessPool:
+                        orphaned_indices.extend(range(idx, len(geometries)))
+                        break
+                    futures[future] = idx
+
+                for future in as_completed(futures):
+                    idx = futures[future]
+                    try:
+                        record_result(idx, future)
+                    except BrokenProcessPool:
+                        orphaned_indices.append(idx)
+                        continue
+                    except Exception as exc:
+                        errors.append((idx, exc))
+                    progress.advance(task)
+
+            for idx in sorted(orphaned_indices):
                 try:
-                    ret = future.result()
-                    results[idx] = ret["result"]
-                    if ret["warnings"]:
-                        warnings.warn(f"#{idx}: {ret['warnings']}")
+                    with ProcessPoolExecutor(
+                        max_workers=1, initializer=_init_worker
+                    ) as pool:
+                        future = pool.submit(
+                            _wrap_task, func, None, geometries[idx], **kwargs
+                        )
+                        record_result(idx, future)
+                except BrokenProcessPool:
+                    errors.append((idx, RuntimeError("Worker crashed.")))
                 except Exception as exc:
                     errors.append((idx, exc))
                 progress.advance(task)
 
-        pool.shutdown(wait=False)
         return results, errors
 
     def apply(self, operation_name: str, geometries: list, **kwargs) -> list:
@@ -597,6 +647,11 @@ class Session:
         from ..swaps import place
 
         results, errors = self._run_parallel(func, geometries, operation_name, **kwargs)
+        failures = [
+            (str(geometries[i]._meta.get("name", i)), str(exc)) for i, exc in errors
+        ]
+        if failures and self.strict:
+            raise StepFailed(operation_name, failures)
 
         created, data_geoms, model_geoms = [], [], []
         for result in results:
@@ -634,10 +689,10 @@ class Session:
                 )
             self._order.extend(created)
 
-        if errors:
-            msgs = [f"#{i}: {e}" for i, e in errors]
+        if failures:
+            msgs = [f"{name}: {reason}" for name, reason in failures]
             warnings.warn(
-                f"{len(errors)}/{len(geometries)} failed:\n  " + "\n  ".join(msgs)
+                f"{len(failures)}/{len(geometries)} failed:\n  " + "\n  ".join(msgs)
             )
 
         self._last_results = created

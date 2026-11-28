@@ -28,6 +28,7 @@ _module_map = {
         "MeshMerger",
         "MeshSimplifier",
     ],
+    ".check": ["MeshDefect", "check_mesh"],
     ".hmff": ["equilibrate_fit"],
     ".coarse_graining": ["mesh_to_cg"],
     ".texture": ["TextureSampler"],

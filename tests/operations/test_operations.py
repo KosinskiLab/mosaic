@@ -101,6 +101,12 @@ class TestDownsample:
         result = downsample(cloud, method="number", size=50)
         assert result.points.shape[0] == 50
 
+    def test_number_downsampling_is_reproducible(self, cloud):
+        first = downsample(cloud, method="number", size=50)
+        second = downsample(cloud, method="number", size=50)
+        np.testing.assert_array_equal(first.points, second.points)
+        np.testing.assert_array_equal(first.normals, second.normals)
+
     def test_center_of_mass(self, cloud):
         result = downsample(cloud, method="center_of_mass", radius=20.0)
         assert result.points.shape[0] < cloud.points.shape[0]
@@ -350,14 +356,15 @@ class TestRemesh:
         assert result is not None
 
     def test_edge_length_keeps_mesh_it_cannot_remesh(self):
-        import open3d as o3d
-
         from mosaic.meshing.utils import to_open3d
         from mosaic.parametrization import TriangularMesh
 
-        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=10, resolution=10)
-        vs, fs = np.asarray(sphere.vertices), np.asarray(sphere.triangles).copy()
-        fs[0] = fs[0][::-1]
+        tet = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float)
+        vs = np.concatenate([tet, -tet[1:]])
+        fs = np.array(
+            [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]]
+            + [[0, 4, 5], [0, 6, 4], [0, 5, 6], [4, 6, 5]]
+        )
         geom = GeometryData(
             points=vs, model=TriangularMesh(to_open3d(vs, fs), repair=False)
         )

@@ -870,6 +870,8 @@ class TriangularMesh(Parametrization):
         Triangular mesh.
     """
 
+    _defects = None
+
     def __init__(self, mesh: "open3d.geometry.TriangleMesh", repair: bool = True):
         self.mesh = mesh
 
@@ -881,6 +883,27 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_triangles()
             self.mesh.remove_unreferenced_vertices()
             self.mesh.remove_duplicated_vertices()
+        self._orient()
+
+    def orient_outward(self) -> None:
+        """Turn closed pieces so their normals point outward."""
+        self._orient(outward=True)
+        return None
+
+    def _orient(self, outward: bool = False) -> None:
+        """Make winding consistent, keeping each piece's side unless ``outward``."""
+        import open3d as o3d
+
+        faces = np.asarray(self.mesh.triangles)
+        if outward:
+            oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
+        else:
+            oriented = meshing.repair._orient_consistently(faces)
+        if not np.array_equal(oriented, faces):
+            self.mesh.triangles = o3d.utility.Vector3iVector(oriented)
+            if self.mesh.has_vertex_normals():
+                self.mesh.compute_vertex_normals()
+        return None
 
     def to_file(self, file_path: str | PathLike[str]):
         from os.path import splitext
@@ -938,6 +961,7 @@ class TriangularMesh(Parametrization):
             setattr(mesh, attr, o3d.utility.Vector3dVector(state.get(attr)))
 
         self.mesh = mesh
+        self._orient()
 
     @property
     def vertices(self):
@@ -946,6 +970,14 @@ class TriangularMesh(Parametrization):
     @property
     def triangles(self):
         return np.asarray(self.mesh.triangles)
+
+    @property
+    def defects(self) -> list["meshing.MeshDefect"]:
+        """Holes, twisted spots and non-manifold edges left on the mesh."""
+        # functools.cached_property locks all instances together before 3.12.
+        if self._defects is None:
+            self._defects = meshing.check_mesh(self.vertices, self.triangles)
+        return self._defects
 
     @classmethod
     def fit(cls, positions: np.ndarray, **kwargs):
@@ -1451,10 +1483,7 @@ class BallPivoting(TriangularMesh):
                 pressure=pressure,
                 n_ring=boundary_ring,
             )
-        mesh = _drop_small_pieces(meshing.to_open3d(new_vs, new_fs))
-        new_vs = np.asarray(mesh.vertices)
-        new_fs = _orient_closed_outward(new_vs, np.asarray(mesh.triangles))
-        return cls(mesh=meshing.to_open3d(new_vs, new_fs))
+        return cls(mesh=_drop_small_pieces(meshing.to_open3d(new_vs, new_fs)))
 
 
 class PoissonMesh(TriangularMesh):
@@ -1747,6 +1776,7 @@ class ShrinkWrap(TriangularMesh):
             Reconstructed surface mesh.
         """
         import gpytoolbox as gpy
+        import open3d as o3d
         from scipy.spatial import cKDTree
 
         positions = np.asarray(positions, dtype=np.float64)
@@ -1776,6 +1806,7 @@ class ShrinkWrap(TriangularMesh):
             mean_nn = float(real_tree.query(positions, k=2)[0][:, 1].mean())
             n_hull_samples = hull_shape.points_per_sampling(mean_nn)
 
+            o3d.utility.random.seed(0)
             pcd_hull = hull.sample_points_uniformly(number_of_points=n_hull_samples)
             hull_pts = np.asarray(pcd_hull.points, dtype=np.float64)
             hull_normals = np.asarray(pcd_hull.normals, dtype=np.float64)
@@ -1970,6 +2001,9 @@ def _sample_from_mesh(
     n_samples: int,
     mesh_init_factor: int | None = None,
 ) -> np.ndarray:
+    import open3d as o3d
+
+    o3d.utility.random.seed(0)
     if mesh_init_factor is None:
         point_cloud = mesh.sample_points_uniformly(
             number_of_points=n_samples,

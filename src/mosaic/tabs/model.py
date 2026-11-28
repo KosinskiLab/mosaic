@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     from ..widgets.vtk_widgets import LegendWidget
 
 
+def _task_name(label: str, geometry: "Geometry") -> str:
+    return f"{label} {geometry._meta.get('name', '')}".rstrip()
+
+
 def _repair_mesh(
     geometry: "Geometry",
     max_hole_size: int | None = None,
@@ -363,7 +367,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Repair Mesh",
+                    "name": _task_name("Repair Mesh", geometry),
                     "func": _repair_mesh,
                     "callback": partial(self._default_callback, label="Repair"),
                     "args": (geometry._geometry_data,),
@@ -379,7 +383,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Parametrization",
+                    "name": _task_name("Parametrization", geometry),
                     "func": GeometryOperations.fit,
                     "callback": partial(self._default_callback, label="Fit"),
                     "args": (geometry._geometry_data, method),
@@ -395,7 +399,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Smooth",
+                    "name": _task_name("Smooth", geometry),
                     "func": GeometryOperations.smooth,
                     "callback": partial(self._default_callback, label="Smooth"),
                     "args": (geometry._geometry_data, method),
@@ -413,7 +417,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Sample Fit",
+                    "name": _task_name("Sample Fit", geometry),
                     "func": GeometryOperations.sample,
                     "callback": partial(self._default_callback, label="Sample"),
                     "args": (geometry._geometry_data,),
@@ -434,7 +438,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Remesh",
+                    "name": _task_name("Remesh", geometry),
                     "func": GeometryOperations.remesh,
                     "callback": partial(self._default_callback, label="Remesh"),
                     "args": (geometry._geometry_data, method),
@@ -448,7 +452,7 @@ class ModelTab(QWidget):
         submit_task_batch(
             [
                 {
-                    "name": "Fill Mesh",
+                    "name": _task_name("Fill Mesh", geometry),
                     "func": _fill_mesh,
                     "callback": partial(self._default_callback, label="Fill"),
                     "args": (geometry._geometry_data,),

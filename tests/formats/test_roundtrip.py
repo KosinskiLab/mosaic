@@ -24,6 +24,19 @@ from mosaic.formats.parser import (
 from mosaic.formats.reader import is_likely_density_map, is_volume_file, open_file
 from mosaic.formats.writer import write_geometries
 from mosaic.geometry import Geometry, GeometryData
+from mosaic.utils import volume_to_points
+
+
+@pytest.fixture
+def segmentation_sensitive_to_sampling(monkeypatch):
+    default_rng = np.random.default_rng
+    seeds = iter((0, 1))
+
+    def varying_unseeded_rng(seed=None):
+        return default_rng(next(seeds) if seed is None else seed)
+
+    monkeypatch.setattr(np.random, "default_rng", varying_unseeded_rng)
+    return np.array([1, 1, 1, 1, 1, 1, 1, 0], dtype=np.int16).reshape(2, 2, 2)
 
 
 class TestNdjsonRoundTrip:
@@ -186,6 +199,21 @@ class TestPointsFromFlatArray:
         assert len(result) == 2
         assert all(pts.shape[1] == 3 for pts in result)
 
+    def test_points_from_flat_array_is_reproducible(
+        self, segmentation_sensitive_to_sampling
+    ):
+        volume = segmentation_sensitive_to_sampling
+        first = points_from_flat_array(volume.ravel(), volume.shape, max_cluster=1)
+        second = points_from_flat_array(volume.ravel(), volume.shape, max_cluster=1)
+        np.testing.assert_array_equal(first, second)
+
+
+def test_volume_to_points_is_reproducible(segmentation_sensitive_to_sampling):
+    volume = segmentation_sensitive_to_sampling
+    first = volume_to_points(volume, sampling_rate=1, max_cluster=1)
+    second = volume_to_points(volume, sampling_rate=1, max_cluster=1)
+    np.testing.assert_array_equal(first, second)
+
 
 def test_not_a_segmentation_error_reexport():
     from mosaic.formats import NotASegmentationError as Reexported
@@ -234,6 +262,16 @@ class TestIsLikelyDensityMap:
         arr = np.array([0, 1, 2] * 333 + [0], dtype=np.int16)
         _write_mrc(path, 10, 10, 10, 1, arr)
         assert is_likely_density_map(str(path)) is False
+
+    def test_is_likely_density_map_is_reproducible(
+        self, tmp_path, segmentation_sensitive_to_sampling
+    ):
+        path = tmp_path / "seg.mrc"
+        volume = segmentation_sensitive_to_sampling
+        _write_mrc(path, *volume.shape, 1, volume)
+        first = is_likely_density_map(str(path), max_cluster=1)
+        second = is_likely_density_map(str(path), max_cluster=1)
+        assert first == second
 
     def test_int16_many_unique_is_density(self, tmp_path):
         path = tmp_path / "quant.mrc"

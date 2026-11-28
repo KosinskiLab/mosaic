@@ -37,6 +37,7 @@ dependencies = [
     "imageio",
     "imageio-ffmpeg",
     "importlib_resources",
+    "psutil",
 ]
 
 [project.optional-dependencies]

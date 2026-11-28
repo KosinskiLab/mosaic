@@ -421,3 +421,26 @@ def test_view_tool_does_not_sculpt(perturbed_grid_mesh):
     c.handle_event(EventKind.LMB_UP, 60, 60)
     assert np.array_equal(c.session.target.vs, before)
     assert STACK.undo() is None  # no-op stroke pushed nothing
+
+
+def test_patch_and_its_undo_report_the_topology_change(punched_grid_mesh):
+    c = SculptController(Brush(radius=0.4))
+    geom = _attach(c, punched_grid_mesh)
+    changes = []
+    c.bind_renderer(
+        vtk.vtkRenderer(), topology_callback=lambda: changes.append("topology")
+    )
+    c.set_tool("patch")
+    c._pick = MagicMock(
+        return_value=MeshHit(
+            world_position=np.array([0.5, 0.5, 0.0]),
+            normal=np.array([0.0, 0.0, 1.0]),
+        )
+    )
+    geom.swap_data = MagicMock()
+    c.handle_event(EventKind.LMB_DOWN, 50, 50)
+    c.handle_event(EventKind.MOUSE_MOVE, 50, 50)
+    c.handle_event(EventKind.LMB_UP, 50, 50)
+    assert changes == ["topology"]
+    assert STACK.undo() is not None
+    assert changes == ["topology", "topology"]

@@ -14,6 +14,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from mosaic.pipeline.executor import execute_run, generate_runs
+from mosaic.watchdog import MemoryWatchdog
 
 
 def run_wrapper(run_config: dict, skip_complete: bool = False):
@@ -99,7 +100,10 @@ Examples:
 
     completed = 0
     failed = 0
-    with ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool:
+    with (
+        MemoryWatchdog() as watchdog,
+        ProcessPoolExecutor(max_workers=args.workers, max_tasks_per_child=1) as pool,
+    ):
         futures = {
             pool.submit(run_wrapper, run, args.skip_complete): run for run in runs
         }
@@ -124,6 +128,12 @@ Examples:
                     file=sys.stderr,
                 )
 
+    if watchdog.tripped:
+        print(
+            "Worker memory exceeded 80% of physical memory; the largest worker was "
+            "stopped and its run failed",
+            file=sys.stderr,
+        )
     if failed:
         print(f"{failed}/{total} runs failed", file=sys.stderr)
     return 1 if failed else 0
