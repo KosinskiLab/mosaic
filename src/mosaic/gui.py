@@ -8,7 +8,7 @@ Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 
 import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from os.path import exists
 from typing import TYPE_CHECKING
 
@@ -74,13 +74,16 @@ from .widgets import (
     UpdatePill,
     ViewerModes,
 )
-from .widgets.dock import style_popup, toggle_dock
+from .widgets.defect_highlight import DefectHighlight
+from .widgets.dock import CheckableMenu, style_popup, toggle_dock
 from .widgets.follow_window import follow_window
 from .widgets.viewport_placeholder import ViewportPlaceholder, default_actions
 from .widgets.volume_viewer_hud import VolumeViewerHUD
 
 if TYPE_CHECKING:
     from .formats.tomogram_matching import LinkWriteResult
+    from .geometry import Geometry
+    from .meshing.check import MeshDefect
     from .widgets.container_list import SessionListWidget
 
 # From v1.3.2 these are no longer configurable in favor of vtk recommended defaults
@@ -625,6 +628,24 @@ class App(QMainWindow):
         direction = getattr(self, "_camera_direction", True)
         return self.set_camera_view(view, not direction)
 
+    def _show_defect(self, geometry: "Geometry", defect: "MeshDefect"):
+        model = geometry.model
+        self.defect_highlight.show(model.vertices, model.triangles, defect)
+        for interactor in (self.cdata.data, self.cdata.models):
+            interactor.data_list.set_active_defect(geometry)
+        self.cdata.models.render_vtk()
+
+    def _hide_defect(self):
+        self.defect_highlight.hide()
+        self._refresh_defects()
+
+    def _refresh_defects(self):
+        for interactor in (self.cdata.data, self.cdata.models):
+            if self.defect_highlight.defect is None:
+                interactor.data_list.set_active_defect(None)
+            interactor.data_list.tree_widget.viewport().update()
+        self.cdata.models.render_vtk()
+
     def _toggle_appearance_panel(self):
         panel = self.appearance_panel
         if panel.isVisible():
@@ -1103,11 +1124,20 @@ class App(QMainWindow):
         show_settings.triggered.connect(self.show_app_settings)
         preference_menu.addAction(show_settings)
 
+        self.defect_highlight = DefectHighlight(self.renderer)
+        for interactor in (self.cdata.data, self.cdata.models):
+            interactor.data_list.defect_requested.connect(self._show_defect)
+            interactor.data_list.defect_hidden.connect(self._hide_defect)
+        preference_menu.addMenu(
+            build_mesh_check_menu(self, self.defect_highlight, self._refresh_defects)
+        )
+
         viewing_action = QAction(icon("ph.eye"), "Viewing Mode", self)
         viewing_action.setShortcut(QKeySequence(Qt.Key.Key_Escape))
         viewing_action.triggered.connect(
             lambda: self._transition_modes(ViewerModes.VIEWING)
         )
+        viewing_action.triggered.connect(self._hide_defect)
 
         background_action = QAction(icon("ph.circle-half"), "Toggle Background", self)
         background_action.setShortcut(QKeySequence("D"))
@@ -1820,6 +1850,49 @@ class App(QMainWindow):
         from .dialogs import UpdateDialog
 
         UpdateDialog(__version__, latest_version, has_changelog, parent=self).exec()
+
+
+def build_mesh_check_menu(
+    parent: QWidget | None,
+    highlight: DefectHighlight,
+    refresh: Callable[[], None],
+) -> CheckableMenu:
+    """Build the Preferences > Mesh Check submenu.
+
+    Parameters
+    ----------
+    parent : QWidget or None
+        Parent of the menu.
+    highlight : DefectHighlight
+        Highlight to hide when the kind of its defect is unticked.
+    refresh : callable
+        Repaints the object lists after a kind was ticked or unticked.
+
+    Returns
+    -------
+    CheckableMenu
+        Menu with one checkable entry per defect kind.
+    """
+    menu = style_popup(CheckableMenu("Mesh Check", parent))
+    kinds = (
+        ("Holes", "mesh_check_holes", "hole"),
+        ("Twisted spots", "mesh_check_twisted", "twisted"),
+        ("Non-manifold edges", "mesh_check_nonmanifold", "nonmanifold"),
+    )
+    for label, setting, kind in kinds:
+        action = menu.addAction(label)
+        action.setCheckable(True)
+        action.setChecked(getattr(Settings.ui, setting))
+
+        def toggled(checked: bool, setting: str = setting, kind: str = kind):
+            setattr(Settings.ui, setting, checked)
+            shown = highlight.defect
+            if not checked and shown is not None and shown.kind == kind:
+                highlight.hide()
+            refresh()
+
+        action.toggled.connect(toggled)
+    return menu
 
 
 def _read_files_worker(cdata: MosaicData, filenames: list[str], file_parameters: dict):

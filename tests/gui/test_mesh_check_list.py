@@ -104,3 +104,39 @@ def test_active_row_offers_hide(qapp, all_kinds_shown):
     _press_icon(widget, row=0)
     widget._defect_menu.actions()[0].trigger()
     assert hidden == [True]
+
+
+def test_unticking_the_shown_kind_hides_the_highlight(qapp, all_kinds_shown):
+    import vtk
+
+    from mosaic.gui import build_mesh_check_menu
+    from mosaic.widgets.defect_highlight import DefectHighlight
+
+    model = _holed_mesh()
+    highlight = DefectHighlight(vtk.vtkRenderer())
+    highlight.show(model.vertices, model.triangles, model.defects[0])
+    menu = build_mesh_check_menu(None, highlight, refresh=lambda: None)
+    holes = next(a for a in menu.actions() if a.text() == "Holes")
+    holes.trigger()
+    assert highlight.defect is None
+    assert Settings.ui.mesh_check_holes is False
+    assert shown_defects(model) == []
+
+
+def test_ticking_again_restores_without_rechecking(qapp, all_kinds_shown, monkeypatch):
+    import vtk
+
+    from mosaic import meshing
+    from mosaic.gui import build_mesh_check_menu
+    from mosaic.widgets.defect_highlight import DefectHighlight
+
+    model = _holed_mesh()
+    expected = model.defects
+    monkeypatch.setattr(meshing, "check_mesh", lambda *a, **k: pytest.fail())
+    menu = build_mesh_check_menu(
+        None, DefectHighlight(vtk.vtkRenderer()), refresh=lambda: None
+    )
+    holes = next(a for a in menu.actions() if a.text() == "Holes")
+    holes.trigger()
+    holes.trigger()
+    assert shown_defects(model) == expected

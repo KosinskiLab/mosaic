@@ -1,5 +1,5 @@
 from qtpy.QtCore import QPoint, QRect, QSize, Qt
-from qtpy.QtGui import QCloseEvent, QResizeEvent
+from qtpy.QtGui import QCloseEvent, QMouseEvent, QResizeEvent
 from qtpy.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -12,6 +12,17 @@ from qtpy.QtWidgets import (
     QToolButton,
     QWidget,
 )
+
+
+class CheckableMenu(QMenu):
+    """Menu that stays open when a checkable action is clicked."""
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        action = self.actionAt(event.position().toPoint())
+        if action is not None and action.isCheckable() and action.isEnabled():
+            action.trigger()
+            return None
+        return super().mouseReleaseEvent(event)
 
 
 def menu_pos_above(button_rect: QRect, menu_size: QSize) -> QPoint:

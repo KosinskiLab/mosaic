@@ -14,7 +14,7 @@ from qtpy.QtCore import (
     Qt,
     Signal,
 )
-from qtpy.QtGui import QColor, QDropEvent, QMouseEvent, QPainter
+from qtpy.QtGui import QColor, QDropEvent, QPainter
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -40,7 +40,7 @@ from ..pipeline._utils import natural_sort_key, strip_filepath
 from ..settings import Settings
 from ..stylesheets import Colors, Typography
 from ..tree_state import TreeState, TreeStateData
-from .dock import menu_pos_above, style_popup
+from .dock import CheckableMenu, menu_pos_above, style_popup
 from .message_box import MosaicMessageBox
 
 if TYPE_CHECKING:
@@ -966,17 +966,6 @@ class MetadataItemDelegate(QStyledItemDelegate):
             )
 
 
-class _CheckableMenu(QMenu):
-    """Menu that stays open when a checkable action is clicked."""
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        action = self.actionAt(event.position().toPoint())
-        if action is not None and action.isCheckable() and action.isEnabled():
-            action.trigger()
-            return None
-        return super().mouseReleaseEvent(event)
-
-
 class _SessionHeader(QWidget):
     """Icon action bar for session management, sits below the session list."""
 
@@ -1038,7 +1027,7 @@ class _SessionHeader(QWidget):
         self._apply_btn_style()
 
     def _build_menu(self):
-        menu = style_popup(_CheckableMenu())
+        menu = style_popup(CheckableMenu())
 
         link = menu.addAction("Link tomograms…")
         link.triggered.connect(self._session_widget.link_tomograms_requested)
