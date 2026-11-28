@@ -96,7 +96,7 @@ class IntelligenceTab(QWidget):
 
         geometries = self.cdata.models.get_selected_geometries()
         if len(geometries) == 0:
-            msg = "A mesh needs for equilibration needs to be selected."
+            msg = "A mesh for equilibration needs to be selected."
             return MosaicMessageBox.warning(self, "Error", msg)
         elif len(geometries) > 1:
             msg = "Can only equilibrate a single mesh at a time."

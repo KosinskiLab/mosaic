@@ -1400,13 +1400,7 @@ class BallPivoting(TriangularMesh):
             pcd, o3d.utility.DoubleVector(radii)
         )
 
-        # Remove noisy small meshes
-        clusters, cluster_n, _ = mesh.cluster_connected_triangles()
-        clusters = np.asarray(clusters)
-        cluster_n = np.asarray(cluster_n)
-        cutoff = 0.02 * cluster_n.sum()
-        triangles_to_remove = cluster_n[clusters] < cutoff
-        mesh.remove_triangles_by_mask(triangles_to_remove)
+        mesh = _drop_small_pieces(mesh)
 
         # Repair and smooth
         mesh = mesh.remove_non_manifold_edges()
@@ -1445,12 +1439,7 @@ class BallPivoting(TriangularMesh):
             warnings.warn(
                 f"Remeshing failed: {e}. Falling back to Liepa triangulation."
             )
-            add_fids = np.arange(len(fs), len(out_fs))
-            nv = len(vs)
-            new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
-                vs, out_fs, add_fids, np.sqrt(2)
-            )
-            vids = np.arange(nv, len(new_vs))
+            new_vs, new_fs, vids = _fill_by_refinement(vs, fs, out_fs, max_hole_size)
 
         if len(vids) > 0:
             new_vs = meshing.fair_mesh(
@@ -1462,6 +1451,9 @@ class BallPivoting(TriangularMesh):
                 pressure=pressure,
                 n_ring=boundary_ring,
             )
+        mesh = _drop_small_pieces(meshing.to_open3d(new_vs, new_fs))
+        new_vs = np.asarray(mesh.vertices)
+        new_fs = _orient_closed_outward(new_vs, np.asarray(mesh.triangles))
         return cls(mesh=meshing.to_open3d(new_vs, new_fs))
 
 
@@ -1927,6 +1919,50 @@ class FlyingEdges(TriangularMesh):
 
         vertices = np.add(vertices, offset * voxel_size)
         return cls(mesh=meshing.to_open3d(vertices, faces), repair=False)
+
+
+def _drop_small_pieces(mesh: "open3d.geometry.TriangleMesh"):
+    """Remove connected pieces holding under 2% of the mesh's triangles."""
+    clusters, cluster_n, _ = mesh.cluster_connected_triangles()
+    clusters, cluster_n = np.asarray(clusters), np.asarray(cluster_n)
+    mesh.remove_triangles_by_mask(cluster_n[clusters] < 0.02 * cluster_n.sum())
+    return mesh.remove_unreferenced_vertices()
+
+
+def _fill_by_refinement(
+    vs: np.ndarray, fs: np.ndarray, filled: np.ndarray, max_hole_size: float | None
+):
+    """Refine the hole-filling faces of ``filled`` by Liepa triangulation.
+
+    Returns the vertices, faces and indices of the vertices Liepa added.
+    """
+    nv = len(vs)
+    new_vs, new_fs, _ = meshing.repair.triangulation_refine_leipa(
+        vs, filled, np.arange(len(fs), len(filled)), np.sqrt(2)
+    )
+    repaired = meshing.to_open3d(new_vs, new_fs).remove_non_manifold_edges()
+    new_fs = meshing.close_holes(new_vs, np.asarray(repaired.triangles), max_hole_size)
+    return new_vs, new_fs, np.arange(nv, len(new_vs))
+
+
+def _orient_closed_outward(vs: np.ndarray, fs: np.ndarray) -> np.ndarray:
+    """Make winding consistent, then reverse closed pieces with negative volume."""
+    fs = meshing.repair._orient_consistently(fs)
+    labels = np.asarray(meshing.to_open3d(vs, fs).cluster_connected_triangles()[0])
+    tri = vs[fs]
+    volume = np.einsum("ij,ij->i", tri[:, 0], np.cross(tri[:, 1], tri[:, 2]))
+    edges = np.sort(
+        np.concatenate([fs[:, [0, 1]], fs[:, [1, 2]], fs[:, [2, 0]]]), axis=1
+    )
+    _, inverse, counts = np.unique(
+        edges, axis=0, return_inverse=True, return_counts=True
+    )
+    open_faces = (counts[inverse.ravel()] == 1).reshape(3, -1).any(axis=0)
+    is_open = np.bincount(labels, weights=open_faces) > 0
+    flip = (np.bincount(labels, weights=volume) < 0) & ~is_open
+    out = fs.copy()
+    out[flip[labels]] = out[flip[labels], ::-1]
+    return out
 
 
 def _sample_from_mesh(

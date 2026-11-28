@@ -30,10 +30,8 @@ __all__ = [
 ]
 
 
-def _close_hole(
-    vs: np.ndarray, fs: np.ndarray, hole_vids: Sequence[int], fast: bool = True
-) -> np.ndarray:
-    """Close mesh holes with perimeter length below threshold.
+def _close_hole(vs: np.ndarray, fs: np.ndarray, hole_vids: Sequence[int]) -> np.ndarray:
+    """Close a mesh hole by recursively splitting it along short chords.
 
     Parameters
     ----------
@@ -41,38 +39,18 @@ def _close_hole(
         Vertex coordinates.
     fs : ndarray, shape (M, 3)
         Face indices.
-    hole_vids : ndarray, shape (K, 3)
+    hole_vids : ndarray, shape (K,)
         Boundary vertex indices.
-    fast : bool, optional
-        Whether to use fast hole filling. Default is True.
 
     Returns
     -------
-    ndarray, shape (K, 3)
-        Face indices of mesh with holes closed.
+    ndarray, shape (L, 3)
+        Face indices of mesh with the hole closed.
 
     References
     ----------
     .. [1] Code adapted from https://github.com/kentechx/hole-filling
     """
-
-    def hash_func(edges: np.ndarray):
-        # edges: (n, 2)
-        edges = np.core.defchararray.chararray.encode(edges.astype("str"))
-        edges = np.concatenate(
-            [edges[:, 0:1], np.full_like(edges[:, 0:1], "_", dtype=str), edges[:, 1:2]],
-            axis=1,
-        )
-        edges_hash = np.core.defchararray.add(
-            np.core.defchararray.add(edges[:, 0], edges[:, 1]), edges[:, 2]
-        )
-        return edges_hash
-
-    # create edge hash
-    if not fast:
-        edges = igl.edges(fs)
-        edges_hash = hash_func(edges)
-
     hole_vids = np.array(hole_vids)
     if len(hole_vids) < 3:
         return fs.copy()
@@ -81,6 +59,13 @@ def _close_hole(
         # fill one triangle
         out_fs = np.concatenate([fs, hole_vids[::-1][None]], axis=0)
         return out_fs
+
+    n = len(vs)
+    edges = np.sort(
+        np.concatenate([fs[:, [0, 1]], fs[:, [1, 2]], fs[:, [2, 0]]]), axis=1
+    )
+    edges = edges[np.isin(edges, hole_vids).all(axis=1)]
+    existing = np.unique(edges[:, 0] * n + edges[:, 1])
 
     # heuristically divide the hole
     queue = [hole_vids[::-1]]
@@ -96,47 +81,58 @@ def _close_hole(
         hole_len = np.sum(hole_edge_len)
         min_concave_degree = np.inf
         tar_i, tar_j = -1, -1
-        for i in range(len(cur_vids)):
+        k = len(cur_vids)
+        offsets = np.arange(k)
+        for i in range(k):
             eu_dists = np.linalg.norm(vs[cur_vids[i]] - vs[cur_vids], axis=1)
-            if not fast:
-                # check if the edge exists
-                _edges = np.sort(
-                    np.stack([np.tile(cur_vids[i], len(cur_vids)), cur_vids], axis=1),
-                    axis=1,
-                )
-                _edges_hash = hash_func(_edges)
-                eu_dists[np.isin(_edges_hash, edges_hash, assume_unique=True)] = np.inf
+            keys = np.minimum(cur_vids[i], cur_vids) * n + np.maximum(
+                cur_vids[i], cur_vids
+            )
+            eu_dists[np.isin(keys, existing)] = np.inf
 
             geo_dists = np.roll(np.roll(hole_edge_len, -i).cumsum(), i)
             geo_dists = np.roll(np.minimum(geo_dists, hole_len - geo_dists), 1)
             concave_degree = eu_dists / (geo_dists**2 + _epsilon)
-            concave_degree[i] = -np.inf  # there may exist two duplicate vertices
 
-            _idx = 1
-            j = np.argsort(concave_degree)[_idx]
-            while (
-                min(
-                    (j + len(cur_vids) - i) % len(cur_vids),
-                    (i + len(cur_vids) - j) % len(cur_vids),
-                )
-                <= 1
-            ):
-                _idx += 1
-                j = np.argsort(concave_degree)[_idx]
+            gap = np.minimum((offsets - i) % k, (i - offsets) % k)
+            candidates = np.flatnonzero((gap > 1) & np.isfinite(concave_degree))
+            if len(candidates) == 0:
+                continue
+            j = candidates[np.argmin(concave_degree[candidates])]
 
             if concave_degree[j] < min_concave_degree:
                 min_concave_degree = concave_degree[j]
                 tar_i, tar_j = min(i, j), max(i, j)
 
+        if tar_i < 0:
+            continue
         queue.append(cur_vids[tar_i : tar_j + 1])
         queue.append(np.concatenate([cur_vids[tar_j:], cur_vids[: tar_i + 1]]))
 
-    out_fs = np.concatenate([fs, np.array(out_fs)], axis=0)
-    return out_fs
+    if not out_fs:
+        return fs.copy()
+    return np.concatenate([fs, np.array(out_fs)], axis=0)
+
+
+def _orient_consistently(fs: np.ndarray) -> np.ndarray:
+    """Make face winding agree within each connected piece of the mesh."""
+    fs = np.asarray(fs, dtype=np.int64)
+    if len(fs) == 0:
+        # bfs_orient segfaults on a mesh without faces.
+        return fs
+    oriented, comp = igl.bfs_orient(fs)
+    # bfs_orient follows each component's first face, which may be the flipped one.
+    reversed_faces = (oriented != fs).any(axis=1)
+    inverted = np.bincount(comp, weights=reversed_faces) > np.bincount(comp) / 2
+    oriented[inverted[comp]] = oriented[inverted[comp], ::-1]
+    # On a non-orientable surface the seam can end up longer than before.
+    if _orientation_conflicts(oriented) <= _orientation_conflicts(fs):
+        return oriented
+    return fs
 
 
 def close_holes(
-    vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0, fast: bool = True
+    vs: np.ndarray, fs: np.ndarray, hole_len_thr: float = 10000.0
 ) -> np.ndarray:
     """Close mesh holes with perimeter length below threshold.
 
@@ -148,8 +144,6 @@ def close_holes(
         Face indices.
     hole_len_thr : float, optional
         Maximum perimeter length of holes to close. Default is 10000.0.
-    fast : bool, optional
-        Whether to use fast hole filling. Default is True.
 
     Returns
     -------
@@ -162,15 +156,7 @@ def close_holes(
     """
     # boundary_loop_all follows oriented edges and fragments holes next to a
     # flipped face.
-    out_fs = np.asarray(fs, dtype=np.int64)
-    oriented, comp = igl.bfs_orient(out_fs)
-    # bfs_orient follows each component's first face, which may be the flipped one.
-    reversed_faces = (oriented != out_fs).any(axis=1)
-    inverted = np.bincount(comp, weights=reversed_faces) > np.bincount(comp) / 2
-    oriented[inverted[comp]] = oriented[inverted[comp], ::-1]
-    # On a non-orientable surface the seam can end up longer than before.
-    if _orientation_conflicts(oriented) <= _orientation_conflicts(out_fs):
-        out_fs = oriented
+    out_fs = _orient_consistently(fs)
     # boundary_loop_all breaks holes that touch at a vertex into fragments;
     # once the first is filled, a second pass sees the other as a clean loop.
     for _ in range(2):
@@ -181,7 +167,7 @@ def close_holes(
             perimeter = np.linalg.norm(vs[np.roll(b, -1)] - vs[b], axis=1).sum()
             if hole_len_thr is not None and perimeter > hole_len_thr:
                 continue
-            out_fs = _close_hole(vs, out_fs, b, fast)
+            out_fs = _close_hole(vs, out_fs, b)
     return out_fs
 
 

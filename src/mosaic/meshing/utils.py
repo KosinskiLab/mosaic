@@ -81,6 +81,8 @@ def scale(mesh: "open3d.geometry.TriangleMesh", scaling: ArrayLike):
 
 def _orientation_conflicts(faces: np.ndarray) -> int:
     """Count directed edges shared by two faces that disagree on orientation."""
+    if len(faces) == 0:
+        return 0
     directed = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
     keys = directed[:, 0] * (int(faces.max()) + 1) + directed[:, 1]
     return len(keys) - len(np.unique(keys))
@@ -106,6 +108,7 @@ def remesh(
         Indices of feature vertices that are preserved and placed at the
         beginning of the output vertex array. Default is None.
     """
+    import igl
     from gpytoolbox import remesh_botsch
 
     mesh = mesh.remove_duplicated_vertices()
@@ -115,9 +118,11 @@ def remesh(
     v = np.asarray(mesh.vertices, dtype=np.float64)
     f = np.asarray(mesh.triangles, dtype=np.int32)
 
-    if _orientation_conflicts(f):
+    if _orientation_conflicts(f) or not igl.is_vertex_manifold(f).all():
         # remesh_botsch exhausts memory or segfaults on such meshes.
-        raise ValueError("Input mesh is not consistently oriented")
+        raise ValueError(
+            "Input mesh is not consistently oriented or has a non-manifold vertex"
+        )
 
     if target_edge_length is not None and target_edge_length <= 0:
         target_edge_length = None

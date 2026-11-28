@@ -72,3 +72,19 @@ def test_does_not_add_orientation_conflicts_to_non_orientable_surface():
     vs, fs = _mobius(60, 4)
     filled = close_holes(vs, fs, 1)
     assert _orientation_conflicts(filled) <= _orientation_conflicts(fs)
+
+
+def test_accepts_mesh_without_faces():
+    filled = close_holes(np.zeros((3, 3)), np.zeros((0, 3), dtype=int), 10)
+    assert len(filled) == 0
+
+
+def test_fill_does_not_reuse_existing_edges():
+    vs, fs = _grid_with_holes(6, {(1, 2), (2, 1)})
+    filled = close_holes(vs, fs, 10)
+    edges = np.sort(
+        np.concatenate([filled[:, [0, 1]], filled[:, [1, 2]], filled[:, [2, 0]]]),
+        axis=1,
+    )
+    _, counts = np.unique(edges, axis=0, return_counts=True)
+    assert counts.max() <= 2

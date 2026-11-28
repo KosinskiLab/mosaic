@@ -6,6 +6,7 @@ Copyright (c) 2024-2026 European Molecular Biology Laboratory
 Author: Valentin Maurer <valentin.maurer@embl-hamburg.de>
 """
 
+import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Optional
 
@@ -200,6 +201,7 @@ def skeletonize(
                     description="Points within this radius are merged into one.",
                 ),
             ),
+            gui=False,
         ),
         Method(
             "Num Points",
@@ -214,6 +216,7 @@ def skeletonize(
                     description="Randomly selects this many points from the input.",
                 ),
             ),
+            gui=False,
         ),
         Method(
             "Center of Mass",
@@ -229,7 +232,9 @@ def skeletonize(
         ),
     ),
 )
-def downsample(geometry: "Geometry | GeometryData", method: str = "radius", **kwargs):
+def downsample(
+    geometry: "Geometry | GeometryData", method: str = "center_of_mass", **kwargs
+):
     """
     Downsample point cloud.
 
@@ -242,7 +247,7 @@ def downsample(geometry: "Geometry | GeometryData", method: str = "radius", **kw
         - 'radius' : Uniform voxel grid downsampling
         - 'center_of_mass' : Replace nearby points by their centroid
         - 'number' : Random subsampling to target count
-        Default is 'radius'.
+        Default is 'center_of_mass'.
     **kwargs
         Additional arguments passed to the chosen method:
         - For 'radius': voxel_size parameter for open3d.voxel_down_sample
@@ -942,7 +947,10 @@ def remesh(geometry: "Geometry | GeometryData", method: str, **kwargs):
     method = MethodRegistry.resolve_method("remesh", method)
     mesh = meshing.to_open3d(mesh.vertices.copy(), mesh.triangles.copy())
     if method == "edge_length" or method == "edge length":
-        mesh = meshing.remesh(mesh=mesh, **kwargs)
+        try:
+            mesh = meshing.remesh(mesh=mesh, **kwargs)
+        except ValueError as exc:
+            warnings.warn(f"Kept mesh without remeshing: {exc}")
     elif method == "vertex_clustering" or method == "vertex clustering":
         mesh = mesh.simplify_vertex_clustering(**kwargs)
     elif method == "subdivide":
