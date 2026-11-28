@@ -885,12 +885,20 @@ class TriangularMesh(Parametrization):
             self.mesh.remove_duplicated_vertices()
         self._orient()
 
-    def _orient(self) -> None:
-        """Make winding consistent and turn closed pieces outward."""
+    def orient_outward(self) -> None:
+        """Turn closed pieces so their normals point outward."""
+        self._orient(outward=True)
+        return None
+
+    def _orient(self, outward: bool = False) -> None:
+        """Make winding consistent, keeping each piece's side unless ``outward``."""
         import open3d as o3d
 
         faces = np.asarray(self.mesh.triangles)
-        oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
+        if outward:
+            oriented = _orient_closed_outward(np.asarray(self.mesh.vertices), faces)
+        else:
+            oriented = meshing.repair._orient_consistently(faces)
         if not np.array_equal(oriented, faces):
             self.mesh.triangles = o3d.utility.Vector3iVector(oriented)
             if self.mesh.has_vertex_normals():

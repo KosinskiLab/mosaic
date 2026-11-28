@@ -1330,7 +1330,7 @@ def fit(geometry: "Geometry | GeometryData", method: str, **kwargs):
         If method is unsupported or point count is insufficient (<50).
     """
     from .geometry import GeometryData
-    from .parametrization import PARAMETRIZATION_TYPE
+    from .parametrization import PARAMETRIZATION_TYPE, TriangularMesh
 
     method = MethodRegistry.resolve_method("fit", method)
 
@@ -1367,6 +1367,8 @@ def fit(geometry: "Geometry | GeometryData", method: str, **kwargs):
             kwargs.setdefault("normals", geom_normals)
 
     fit = fit_object.fit(geometry.points, **kwargs)
+    if isinstance(fit, TriangularMesh):
+        fit.orient_outward()
     if hasattr(fit, "mesh"):
         new_points = fit.vertices
         normals = fit.compute_vertex_normals()

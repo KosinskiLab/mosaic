@@ -286,7 +286,7 @@ def _flush_messages():
 
         if len(items) == 1:
             name, msg = items[0]
-            text = f"{name.replace('_', ' ').title()} "
+            text = f"{name} "
             text += "completed with warnings" if is_warning else "failed"
             first_line = (msg.strip().splitlines()[0][:300] if msg else "") or ""
             detail = msg or ""
